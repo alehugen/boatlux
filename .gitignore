@@ -1,0 +1,44 @@
+# Dependências e build
+node_modules
+dist
+dist-ssr
+*.tsbuildinfo
+.vite
+coverage
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Variáveis de ambiente
+.env
+.env.*
+!.env.example
+*.local
+
+# Dados reais (relatórios financeiros importados no app)
+# Evita commitar DREs, Curvas ABC e outras planilhas da empresa por engano.
+# Para versionar arquivos de exemplo anonimizados, coloque-os em samples/.
+*.xlsx
+*.xls
+*.csv
+*.pdf
+!samples/**
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

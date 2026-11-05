@@ -1,0 +1,422 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn-vue/tailwind.css';
+
+/* Tipografia da marca Boat Lux (boatlux.com.br): Montserrat no texto, Cinzel nos títulos. */
+@font-face {
+  font-family: 'Montserrat Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/montserrat/files/montserrat-latin-wght-normal.woff2') format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/cinzel/files/cinzel-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('@fontsource/cinzel/files/cinzel-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/cinzel/files/cinzel-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Courier Prime';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/courier-prime/files/courier-prime-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Courier Prime';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/courier-prime/files/courier-prime-latin-700-normal.woff2') format('woff2');
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Montserrat Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Cinzel', ui-serif, Georgia, serif;
+  --color-printer: #001530;
+
+  /* Paleta oficial da Boat Lux (cores globais do site boatlux.com.br) */
+  --color-brand-navy: #0b4976;
+  --color-brand-deep: #00244f;
+  --color-brand-cyan: #12bff9;
+  --color-brand-sky: #7ec1f3;
+  --color-brand-mist: #f4f8fb;
+  --color-brand-gray: #8d8f90;
+  --color-brand-ink: #242424;
+
+  --font-receipt: 'Courier Prime', ui-monospace, 'Courier New', monospace;
+
+  --text-display: 4.5rem;
+  --text-display--line-height: 0.98;
+  --text-display--letter-spacing: -0.04em;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 160ms;
+  --duration-base: 260ms;
+  --duration-slow: 420ms;
+
+  --animate-rise: rise 640ms var(--ease-out) both;
+  --animate-print: print 1400ms cubic-bezier(0.45, 0, 0.2, 1) both;
+  --animate-stamp: stamp 420ms var(--ease-spring) both;
+  --animate-modal-in: modal-in var(--duration-slow) var(--ease-out) both;
+  --animate-modal-out: modal-out var(--duration-base) var(--ease-in) both;
+  --animate-backdrop-in: backdrop-in var(--duration-slow) var(--ease-out) both;
+  --animate-backdrop-out: backdrop-in var(--duration-base) var(--ease-in) reverse both;
+
+  @keyframes print {
+    from {
+      transform: translateY(-100%);
+    }
+  }
+
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.96);
+    }
+  }
+
+  @keyframes modal-out {
+    to {
+      opacity: 0;
+      transform: translateY(8px) scale(0.97);
+    }
+  }
+
+  @keyframes backdrop-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes stamp {
+    from {
+      opacity: 0;
+      transform: scale(1.8);
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+      filter: blur(2px);
+    }
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-body: var(--body);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-marker-ink: var(--marker-ink);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-total: var(--total);
+  --color-border: var(--border);
+  --color-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-rule: var(--paper-rule);
+  --color-paper-loss: var(--paper-loss);
+  --color-paper-gain: var(--paper-gain);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --shadow-card: var(--elevation-1);
+  --shadow-primary: var(--elevation-primary);
+  --shadow-floating: var(--elevation-2);
+}
+
+:root {
+  color-scheme: light;
+  /* O site usa cantos quase retos (0–3px). */
+  --radius: 0.25rem;
+
+  --background: #f4f8fb;
+  --foreground: #00244f;
+  --body: #3b5068;
+  --card: #ffffff;
+  --card-foreground: #00244f;
+  --popover: #ffffff;
+  --popover-foreground: #00244f;
+  --primary: #0b4976;
+  --primary-foreground: #ffffff;
+  --marker-ink: #0b4976;
+  --secondary: #e6eef5;
+  --secondary-foreground: #00244f;
+  --muted: #e6eef5;
+  --muted-foreground: #586b80;
+  --accent: color-mix(in oklch, #7ec1f3 22%, var(--card));
+  --accent-foreground: #0b4976;
+  --destructive: #c4314b;
+  --destructive-soft: #fbe3e8;
+  --success: #157a50;
+  --success-soft: #dcf5ea;
+  --total: #0a6fa3;
+  --border: #dae4ed;
+  --border-strong: #b6c9da;
+  --input: #c3d3e1;
+  --ring: #0b4976;
+
+  --paper: #fbfbf7;
+  --paper-ink: #1a1a1a;
+  --paper-rule: #a3a3a3;
+  --paper-loss: #b3261e;
+  --paper-gain: #1f8a5b;
+  --glow: transparent;
+
+  --elevation-1: 0 1px 2px rgb(0 36 79 / 0.04), 0 2px 6px -2px rgb(0 36 79 / 0.07);
+  --elevation-2: 0 1px 2px rgb(0 36 79 / 0.04), 0 6px 14px -4px rgb(0 36 79 / 0.1),
+    0 18px 36px -14px rgb(0 36 79 / 0.2);
+  --elevation-primary: 0 1px 2px rgb(11 73 118 / 0.25), 0 8px 20px -8px rgb(18 191 249 / 0.55);
+
+  --layer-raised: 10;
+  --layer-nav: 30;
+  --layer-header: 40;
+  --layer-modal: 45;
+}
+
+:root.dark {
+  color-scheme: dark;
+
+  --background: #001a3a;
+  --foreground: #eef5fb;
+  --body: #c3d5e6;
+  --card: #00244f;
+  --card-foreground: #eef5fb;
+  --popover: #0a2f5e;
+  --popover-foreground: #eef5fb;
+  --primary: #12bff9;
+  --primary-foreground: #00244f;
+  --marker-ink: #7ec1f3;
+  --secondary: #0a2f5e;
+  --secondary-foreground: #eef5fb;
+  --muted: #0a2f5e;
+  --muted-foreground: #93abc3;
+  --accent: color-mix(in oklch, var(--primary) 14%, var(--card));
+  --accent-foreground: #a9dcfb;
+  --destructive: #ff8fa3;
+  --destructive-soft: color-mix(in oklch, var(--destructive) 16%, var(--card));
+  --success: #5fd3a0;
+  --success-soft: color-mix(in oklch, var(--success) 14%, var(--card));
+  --total: #7ec1f3;
+  --border: #12386a;
+  --border-strong: #22507f;
+  --input: #22507f;
+  --ring: #12bff9;
+  --glow: #0b4976;
+
+  --elevation-1: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 10 26 / 0.35), 0 2px 8px -2px rgb(0 10 26 / 0.35);
+  --elevation-2: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 2px 4px rgb(0 10 26 / 0.35), 0 10px 20px -6px rgb(0 10 26 / 0.45),
+    0 24px 44px -16px rgb(0 10 26 / 0.65);
+  --elevation-primary: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 22px -8px rgb(18 191 249 / 0.5);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+
+  body {
+    background-image: radial-gradient(1200px 640px at 80% -10%, var(--glow), transparent 70%);
+    background-repeat: no-repeat;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  /* Títulos em Cinzel, como no site da marca. */
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+
+  a:not([data-slot]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  :where(button, [role='button']):not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility figure {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Rótulo em caixa alta com espaçamento, padrão dos botões e sobretítulos do site. */
+@utility eyebrow {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@utility receipt-edge {
+  --tooth: 18px;
+  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / var(--tooth) 100%;
+}
+
+@utility card-interactive {
+  transition-property: transform, box-shadow, --tw-ring-color;
+  transition-duration: var(--duration-slow);
+  transition-timing-function: var(--ease-out);
+
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-2px);
+      --tw-shadow: var(--elevation-2);
+      --tw-ring-color: var(--border-strong);
+    }
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.995);
+    transition-duration: var(--duration-fast);
+  }
+}
+
+@utility link {
+  color: var(--marker-ink);
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in oklch, var(--marker-ink) 40%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color var(--duration-base) var(--ease-out);
+
+  &:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+.page-enter-active {
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+}
+
+.page-leave-active {
+  transition: opacity var(--duration-fast) var(--ease-in);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-leave-to {
+  opacity: 0;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-slow);
+  animation-timing-function: var(--ease-out);
+}
+
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(-8px);
+}
+
+.list-leave-active {
+  position: absolute;
+  inset-inline: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .card-interactive:hover {
+    transform: none;
+  }
+}
