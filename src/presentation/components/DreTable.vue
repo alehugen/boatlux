@@ -27,6 +27,8 @@ const mode = ref<Mode>('value')
 const showZero = ref(false)
 const allMonths = () => props.report.periods.map((_, index) => index)
 const shown = ref(allMonths())
+/** Com poucos meses (ex.: os últimos 3 para apresentar), a tabela fica centralizada em vez de colada à direita. */
+const compact = computed(() => shown.value.length <= 6)
 watch(() => props.report, () => (shown.value = allMonths()))
 const expanded = ref(new Set(props.report.lines.filter((l) => l.kind === DreLineKind.Section).map((l) => l.id)))
 
@@ -105,17 +107,25 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
     </div>
 
     <div ref="scroller" class="overflow-auto overscroll-contain" :class="fullscreen ? 'min-h-0 flex-1' : 'max-h-[70vh]'">
-      <table class="min-w-full text-sm">
-        <thead class="sticky top-0 z-10 bg-muted text-left text-muted-foreground">
+      <table class="text-sm" :class="compact ? 'mx-auto w-auto' : 'min-w-full'">
+        <thead
+          class="sticky top-0 z-10 text-left text-muted-foreground"
+          :class="compact ? 'bg-card shadow-[inset_0_-1px_0_var(--border)]' : 'bg-muted'"
+        >
           <tr>
-            <th class="sticky left-0 z-10 min-w-64 bg-muted px-3 py-2.5 font-normal">Conta</th>
+            <th
+              class="sticky left-0 z-10 px-3 py-2.5 font-normal"
+              :class="compact ? 'min-w-80 bg-card shadow-[inset_0_-1px_0_var(--border)]' : 'min-w-64 bg-muted'"
+            >
+              Conta
+            </th>
             <th
               v-for="i in shown"
               :key="i"
               data-period
               :data-highlight="highlight.includes(i) ? '' : undefined"
               class="px-3 py-2.5 text-right font-normal figure whitespace-nowrap"
-              :class="highlight.includes(i) && 'bg-water-soft text-foreground'"
+              :class="[compact && 'min-w-36 px-5', highlight.includes(i) && 'bg-water-soft text-foreground']"
             >
               {{ formatPeriod(report.periods[i]!) }}
             </th>
@@ -163,7 +173,7 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
               v-for="i in shown"
               :key="i"
               class="px-3 text-right figure whitespace-nowrap"
-              :class="[isResult(line) ? 'py-2.5' : 'py-1.5', cellBackground(line, i), valueColor(line, i)]"
+              :class="[isResult(line) ? 'py-2.5' : 'py-1.5', compact && 'px-5', cellBackground(line, i), valueColor(line, i)]"
             >
               <button
                 v-if="(line.values[i] ?? 0) !== 0 && canInspect(line)"

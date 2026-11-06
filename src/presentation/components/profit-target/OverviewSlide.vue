@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ProfitTargetBase, ReachableProjection } from '@/application'
-import SampleStatement from '@/presentation/components/SampleStatement.vue'
 import StatCard from '@/presentation/components/StatCard.vue'
 import StatGrid from '@/presentation/components/StatGrid.vue'
 import { formatCurrencyCompact, formatPercent } from '@/presentation/format'
+import GoalStatement from './GoalStatement.vue'
 
 const props = defineProps<{
   base: ProfitTargetBase
@@ -23,13 +23,6 @@ const bars = computed(() => {
     extra: width(Math.max(0, p.revenue - base.revenue)),
   }
 })
-
-const receipt = computed(() => [
-  { label: 'Receita necessária', value: props.projection.revenue, kind: 'start' as const },
-  { label: 'Custos variáveis', value: -props.projection.variableCosts, kind: 'step' as const },
-  { label: 'Despesas fixas', value: -props.projection.fixedCosts, kind: 'step' as const },
-  { label: 'Lucro por mês', value: props.projection.target, kind: 'total' as const },
-])
 </script>
 
 <template>
@@ -37,9 +30,9 @@ const receipt = computed(() => [
     <div class="min-w-0 space-y-8">
       <div aria-live="polite">
         <p class="text-body">Para lucrar {{ formatCurrencyCompact(projection.target) }} por mês, a receita precisa chegar a</p>
-        <p class="mt-1 text-4xl font-bold tracking-tight figure sm:text-5xl">
+        <p class="mt-1 text-4xl figure sm:text-5xl">
           {{ formatCurrencyCompact(projection.revenue) }}
-          <span class="block text-lg font-medium tracking-normal text-muted-foreground sm:inline">por mês</span>
+          <span class="block text-lg text-muted-foreground sm:inline">por mês</span>
         </p>
         <p v-if="projection.status === 'reached'" class="mt-3 font-medium text-success">
           Meta atingida: o resultado operacional {{ reference }} foi de
@@ -103,8 +96,11 @@ const receipt = computed(() => [
       </StatGrid>
     </div>
 
-    <div class="drop-shadow-[0_18px_24px_rgb(8_6_28/0.22)]">
-      <SampleStatement :lines="receipt" issuer="Meta de lucro" caption="Projeção mensal" />
-    </div>
+    <GoalStatement
+      :revenue="projection.revenue"
+      :variable-costs="projection.variableCosts"
+      :fixed-costs="projection.fixedCosts"
+      :profit="projection.target"
+    />
   </div>
 </template>

@@ -8,9 +8,10 @@ import CellBreakdown from '@/presentation/components/CellBreakdown.vue'
 import DreTable from '@/presentation/components/DreTable.vue'
 import InfoTip from '@/presentation/components/InfoTip.vue'
 import InsightList from '@/presentation/components/InsightList.vue'
+import LoaderTrack from '@/presentation/components/LoaderTrack.vue'
+import GoalStatement from '@/presentation/components/profit-target/GoalStatement.vue'
 import RevenueBar from '@/presentation/components/RevenueBar.vue'
 import ProfitTarget from '@/presentation/components/ProfitTarget.vue'
-import SampleStatement from '@/presentation/components/SampleStatement.vue'
 import SegmentedControl from '@/presentation/components/SegmentedControl.vue'
 import StatCard from '@/presentation/components/StatCard.vue'
 import ThemeToggle from '@/presentation/components/ThemeToggle.vue'
@@ -60,43 +61,6 @@ describe('StatCard', () => {
   it('mostra variação de margem em pontos percentuais', () => {
     const wrapper = mount(StatCard, { props: { label: 'Margem', value: '22%', delta: 0.02, deltaUnit: 'points' } })
     expect(wrapper.text()).toContain('+2,0 p.p.')
-  })
-})
-
-describe('SampleStatement', () => {
-  const lines = [
-    { label: 'Receita bruta', value: 1000, kind: 'start' },
-    { label: 'Custos', value: -400, kind: 'step' },
-    { label: 'Resultado', value: 600, kind: 'total' },
-  ] as const
-
-  const mountReceipt = (items: readonly { label: string; value: number; kind: 'start' | 'step' | 'total' }[] = lines) =>
-    mount(SampleStatement, { props: { lines: items, caption: 'DRE de exemplo', issuer: 'Cafeteria' } })
-
-  it('lista as linhas numa tabela com emissor e legenda', () => {
-    const wrapper = mountReceipt()
-    expect(wrapper.get('caption').text()).toBe('Cafeteria DRE de exemplo')
-    expect(wrapper.findAll('tbody th').map((th) => th.text())).toEqual(['Receita bruta', 'Custos'])
-    const cost = wrapper.findAll('tbody td')[1]!
-    expect(cost.text()).toBe('-400')
-    expect(cost.classes()).toContain('text-paper-loss')
-  })
-
-  it('fecha com o resultado, a margem e o carimbo no azul', () => {
-    const text = mountReceipt().text()
-    expect(text).toMatch(/Resultado\s*R\$\s?600/)
-    expect(text).toContain('60% da receita')
-    expect(text).toContain('No azul')
-  })
-
-  it('carimba no vermelho quando o resultado é negativo', () => {
-    const wrapper = mountReceipt([
-      { label: 'Receita bruta', value: 1000, kind: 'start' },
-      { label: 'Custos', value: -1200, kind: 'step' },
-      { label: 'Resultado', value: -200, kind: 'total' },
-    ])
-    expect(wrapper.text()).toContain('No vermelho')
-    expect(wrapper.text()).toContain('-20% da receita')
   })
 })
 
@@ -362,6 +326,12 @@ describe('DreTable', () => {
   const report = DreReport.fromTable({ name: 'DRE', sheet: 'DRE Geral', rows: dreRows() })!
   const mountTable = () => mountWithProviders(DreTable, { props: { report, highlight: [2] } })
   const rowLabels = (wrapper: ReturnType<typeof mountTable>) => wrapper.findAll('tbody th').map((th) => th.text())
+
+  it('com poucos meses, centraliza a tabela no card em vez de colar as colunas à direita', () => {
+    const table = mountTable().get('table')
+    expect(table.classes()).toEqual(expect.arrayContaining(['mx-auto', 'w-auto']))
+    expect(table.classes()).not.toContain('min-w-full')
+  })
 
   it('começa com seções abertas, grupos fechados e sem contas zeradas', () => {
     const labels = rowLabels(mountTable())
@@ -634,3 +604,30 @@ describe('RevenueBar', () => {
   })
 })
 
+
+describe('GoalStatement', () => {
+  it('mostra a conta da meta e o lucro em destaque, com a margem', () => {
+    const wrapper = mountWithProviders(GoalStatement, {
+      props: { revenue: 400_000, variableCosts: 200_000, fixedCosts: 150_000, profit: 50_000 },
+    })
+    const clean = (text: string) => text.replace(/\s+/g, ' ')
+    const pairs = wrapper.findAll('dl > div').map((row) => row.findAll('dt, dd').map((cell) => clean(cell.text())))
+    expect(pairs).toEqual([
+      ['Receita necessária', 'R$ 400 mil'],
+      ['Custos variáveis', '−R$ 200 mil'],
+      ['Despesas fixas', '−R$ 150 mil'],
+      ['Lucro por mês', 'R$ 50 milNo azul', '12,5% da receita'],
+    ])
+  })
+})
+
+describe('LoaderTrack', () => {
+  it('anuncia o carregamento só quando ativo', async () => {
+    const wrapper = mount(LoaderTrack, { props: { active: true, label: 'Carregando a página' } })
+    expect(wrapper.attributes('role')).toBe('progressbar')
+    expect(wrapper.attributes('aria-label')).toBe('Carregando a página')
+    await wrapper.setProps({ active: false })
+    expect(wrapper.attributes('role')).toBeUndefined()
+    expect(wrapper.classes()).toContain('opacity-0')
+  })
+})

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteLocationRaw, type RouteRecordRaw } from 'vue-router'
 import type { Report } from '@/domain/report'
+import { finishPageLoading, startPageLoading } from '@/presentation/composables/usePageLoading'
 
 export const routeForReport = (report: Report): RouteLocationRaw => ({ name: 'dre', params: { id: report.id } })
 
@@ -30,3 +31,14 @@ export const router = createRouter({
       : { top: 0 },
   routes,
 })
+
+/** A primeira página é coberta pela tela de carregamento; as trocas seguintes mostram o indicador. */
+router.beforeEach((to, from) => {
+  if (from.matched.length && to.path !== from.path) startPageLoading()
+})
+
+router.afterEach((_to, _from, failure) => {
+  if (failure) finishPageLoading()
+})
+
+router.onError(() => finishPageLoading())

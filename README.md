@@ -62,7 +62,7 @@ npm run dev
 | Leitura de arquivos | [SheetJS](https://sheetjs.com/) (XLSX/XLS), instalada pelo CDN oficial |
 | Gráficos | [ECharts](https://echarts.apache.org/) + vue-echarts |
 | Ícones | [Phosphor Icons](https://phosphoricons.com/) |
-| Fontes | WeezerFont, a fonte do site da marca (`src/assets/fonts/`); Courier Prime no cupom da meta de lucro |
+| Fonte | WeezerFont, a fonte do site da marca (`src/assets/fonts/`) |
 | Testes | [Vitest](https://vitest.dev/), Vue Test Utils, happy-dom |
 
 ## Design system

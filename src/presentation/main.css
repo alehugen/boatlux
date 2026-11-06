@@ -15,28 +15,11 @@
   src: url('@/assets/fonts/WeezerFont.woff2') format('woff2');
 }
 
-/* Cupom da meta de lucro */
-@font-face {
-  font-family: 'Courier Prime';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 400;
-  src: url('@fontsource/courier-prime/files/courier-prime-latin-400-normal.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Courier Prime';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 700;
-  src: url('@fontsource/courier-prime/files/courier-prime-latin-700-normal.woff2') format('woff2');
-}
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-sans: 'WeezerFont', 'Century Gothic', ui-sans-serif, system-ui, sans-serif;
-  --font-receipt: 'Courier Prime', ui-monospace, 'Courier New', monospace;
 
   /* Paleta oficial da Boat Lux (cores globais do site boatlux.com.br) */
   --color-brand-navy: #0b4976;
@@ -56,6 +39,7 @@
   --duration-slower: 900ms;
 
   --animate-stamp: stamp 480ms var(--ease-spring) both;
+  --animate-loader: loader 1200ms var(--ease-in-out) infinite;
   --animate-modal-in: modal-in var(--duration-slow) var(--ease-out) both;
   --animate-modal-out: modal-out var(--duration-base) var(--ease-in) both;
   --animate-backdrop-in: backdrop-in var(--duration-slow) var(--ease-out) both;
@@ -78,6 +62,15 @@
   @keyframes backdrop-in {
     from {
       opacity: 0;
+    }
+  }
+
+  @keyframes loader {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(300%);
     }
   }
 
@@ -112,12 +105,8 @@
   --color-success-soft: var(--success-soft);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-strong: var(--strong);
   --color-ring: var(--ring);
-  --color-paper: var(--paper);
-  --color-paper-ink: var(--paper-ink);
-  --color-paper-rule: var(--paper-rule);
-  --color-paper-loss: var(--paper-loss);
-  --color-paper-gain: var(--paper-gain);
   --color-band: var(--band);
   --color-band-foreground: var(--band-foreground);
   --color-band-muted: var(--band-muted);
@@ -172,6 +161,8 @@
   --success-soft: #dcf5ea;
   --border: #e0e8f0;
   --input: #c9d7e4;
+  /* Tom neutro forte: o "hoje" nas comparações da meta e o item ativo de controles no escuro. */
+  --strong: #9db3c9;
   --ring: #0b4976;
 
   /* Faixa "casco": topo marinho das páginas, igual nos dois temas, como no site da marca. */
@@ -193,11 +184,6 @@
   --result-loss: #ffb3c1;
   --result-highlight: #1b6299;
 
-  --paper: #fbfbf7;
-  --paper-ink: #1a1a1a;
-  --paper-rule: #a3a3a3;
-  --paper-loss: #b3261e;
-  --paper-gain: #1f8a5b;
 
   --elevation-1: 0 1px 2px rgb(0 36 79 / 0.05), 0 3px 8px -2px rgb(0 36 79 / 0.07), 0 14px 30px -18px rgb(0 36 79 / 0.22);
   --elevation-2: 0 2px 4px rgb(0 36 79 / 0.05), 0 10px 22px -6px rgb(0 36 79 / 0.13), 0 28px 52px -22px rgb(0 36 79 / 0.3);
@@ -235,6 +221,7 @@
   --success-soft: color-mix(in oklch, var(--success) 14%, var(--card));
   --border: #154070;
   --input: #22507f;
+  --strong: #2f5f91;
   --ring: #12bff9;
 
   --water-soft: color-mix(in oklch, var(--water) 16%, var(--card));
@@ -298,10 +285,6 @@
   box-shadow: var(--elevation-1);
 }
 
-@utility receipt-edge {
-  --tooth: 18px;
-  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / var(--tooth) 100%;
-}
 
 @utility link {
   color: var(--marker-ink);

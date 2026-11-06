@@ -4,6 +4,13 @@ import { container } from '@/infrastructure/container'
 import { useDreAnalysis } from '@/presentation/composables/useDreAnalysis'
 import { useFileImport } from '@/presentation/composables/useFileImport'
 import { useReports } from '@/presentation/composables/useReports'
+import {
+  finishPageLoading,
+  pageEntering,
+  pageLeaving,
+  startPageLoading,
+  usePageLoading,
+} from '@/presentation/composables/usePageLoading'
 import { useTweenedNumbers } from '@/presentation/composables/useTween'
 import { dreRows, xlsxFile } from '@/test/fixtures'
 import { createApp, defineComponent, nextTick, ref } from 'vue'
@@ -109,5 +116,19 @@ describe('useTweenedNumbers', () => {
     source.value = [1, 2]
     await nextTick()
     expect(tweened.value).toEqual([1, 2])
+  })
+})
+
+describe('usePageLoading', () => {
+  it('mostra o indicador da faixa só entre a saída da página e a entrada da próxima', () => {
+    const { busy, swapping } = usePageLoading()
+    startPageLoading()
+    expect([busy.value, swapping.value]).toEqual([true, false])
+    pageLeaving()
+    expect([busy.value, swapping.value]).toEqual([true, true])
+    pageEntering()
+    expect([busy.value, swapping.value]).toEqual([true, false])
+    finishPageLoading()
+    expect([busy.value, swapping.value]).toEqual([false, false])
   })
 })
