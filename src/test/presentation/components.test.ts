@@ -1,6 +1,6 @@
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import type { ProfitTargetBase } from '@/application'
 import { DreReport } from '@/domain/dre'
 import AppFooter from '@/presentation/components/AppFooter.vue'
@@ -8,11 +8,9 @@ import CellBreakdown from '@/presentation/components/CellBreakdown.vue'
 import DreTable from '@/presentation/components/DreTable.vue'
 import InfoTip from '@/presentation/components/InfoTip.vue'
 import InsightList from '@/presentation/components/InsightList.vue'
+import RevenueBar from '@/presentation/components/RevenueBar.vue'
 import ProfitTarget from '@/presentation/components/ProfitTarget.vue'
-import ReportCard from '@/presentation/components/ReportCard.vue'
-import ReportLayout from '@/presentation/components/ReportLayout.vue'
 import SampleStatement from '@/presentation/components/SampleStatement.vue'
-import SectionNav from '@/presentation/components/SectionNav.vue'
 import SegmentedControl from '@/presentation/components/SegmentedControl.vue'
 import StatCard from '@/presentation/components/StatCard.vue'
 import ThemeToggle from '@/presentation/components/ThemeToggle.vue'
@@ -52,6 +50,11 @@ describe('StatCard', () => {
   it('omite a variação sem base de comparação', () => {
     const wrapper = mount(StatCard, { props: { label: 'Lucro', value: '1', delta: null } })
     expect(wrapper.text()).not.toContain('%')
+  })
+
+  it('pinta de vermelho um valor negativo', () => {
+    const wrapper = mount(StatCard, { props: { label: 'EBITDA', value: '-R$ 19 mil', negative: true } })
+    expect(wrapper.get('.text-destructive').text()).toBe('-R$ 19 mil')
   })
 
   it('mostra variação de margem em pontos percentuais', () => {
@@ -327,17 +330,6 @@ describe('ProfitTarget', () => {
   })
 })
 
-describe('ReportLayout', () => {
-  it('mostra os controles junto da navegação, que acompanha a rolagem', () => {
-    const wrapper = mount(ReportLayout, {
-      props: { sections: [{ id: 'a', label: 'A' }] },
-      slots: { controls: '<button>Período</button>', default: '<section id="a" />' },
-    })
-    expect(wrapper.get('nav').text()).toContain('Período')
-    expect(wrapper.get('nav').classes()).toContain('sticky')
-  })
-})
-
 describe('SegmentedControl', () => {
   const options = [
     { value: 'a', label: 'Opção A' },
@@ -363,27 +355,6 @@ describe('InsightList', () => {
     expect(wrapper.text()).toContain('Lucro em alta')
     expect(wrapper.text()).toContain('Ponto positivo')
     expect(wrapper.getComponent(InfoTip).props('text')).toBe('Lucro ÷ lucro anterior')
-  })
-})
-
-describe('ReportCard', () => {
-  const mountCard = (removable = false) =>
-    mountWithProviders(ReportCard, {
-      props: { title: 'DRE 2026', subtitle: '12 meses', to: '/dre/1', removable },
-      global: { stubs: { RouterLink: RouterLinkStub } },
-    })
-
-  it('tem um link "Visualizar" que cobre o card inteiro', () => {
-    const link = mountCard().getComponent(RouterLinkStub)
-    expect(link.props('to')).toBe('/dre/1')
-    expect(link.text()).toContain('Visualizar')
-    expect(link.classes()).toContain('after:absolute')
-  })
-
-  it('emite a remoção sem navegar', async () => {
-    const wrapper = mountCard(true)
-    await wrapper.get('button[aria-label="Remover DRE 2026"]').trigger('click')
-    expect(wrapper.emitted('remove')).toHaveLength(1)
   })
 })
 
@@ -451,14 +422,27 @@ describe('DreTable', () => {
     expect(headers()).toEqual(['jan/26', 'fev/26', 'mar/26'])
   })
 
-  it('pinta os totais e resultados com a cor de destaque, e os negativos das contas de vermelho', async () => {
+  it('destaca as linhas de resultado com fundo próprio, os totais em cor forte e os negativos em vermelho', async () => {
     const wrapper = mountTable()
     await wrapper.findAll('tbody button').find((b) => b.text() === 'Despesas com pessoal')!.trigger('click')
     const row = (label: string) => wrapper.findAll('tbody tr').find((tr) => tr.get('th').text() === label)!
-    const colors = (label: string) => row(label).findAll('td').map((td) => (td.classes('text-total') ? 'total' : td.classes('text-destructive') ? 'negativo' : 'normal'))
+    const colors = (label: string) =>
+      row(label)
+        .findAll('td')
+        .map((td) =>
+          td.classes('text-result-loss')
+            ? 'resultado negativo'
+            : td.classes('text-destructive')
+              ? 'negativo'
+              : td.classes('text-foreground')
+                ? 'total'
+                : 'normal',
+        )
     expect(colors('Receita operacional bruta')).toEqual(['total', 'total', 'total'])
-    expect(colors('Despesas operacionais')).toEqual(['total', 'total', 'total'])
     expect(colors('Salários')).toEqual(['negativo', 'negativo', 'negativo'])
+    expect(row('Resultado líquido (EBITDA)').classes()).toContain('bg-result')
+    expect(colors('Resultado líquido (EBITDA)')).toEqual(['normal', 'normal', 'resultado negativo'])
+    expect(row('Receita operacional bruta').classes()).not.toContain('bg-result')
   })
 
   it('destaca a coluna do período selecionado', () => {
@@ -584,38 +568,6 @@ describe('CellBreakdown', () => {
   })
 })
 
-describe('SectionNav', () => {
-  const sections = [
-    { id: 'indicadores', label: 'Indicadores' },
-    { id: 'lucro', label: 'Lucro', nested: true },
-  ]
-
-  it('lista as seções como links para as âncoras', () => {
-    const wrapper = mount(SectionNav, { props: { sections } })
-    const links = wrapper.findAll('a')
-    expect(links.map((link) => [link.text(), link.attributes('href')])).toEqual([
-      ['Indicadores', '#indicadores'],
-      ['Lucro', '#lucro'],
-    ])
-  })
-
-  it('rola suavemente até a seção clicada e a marca como atual', async () => {
-    const target = document.createElement('section')
-    target.id = 'lucro'
-    target.scrollIntoView = vi.fn()
-    document.body.appendChild(target)
-
-    const wrapper = mount(SectionNav, { props: { sections }, attachTo: document.body })
-    await wrapper.findAll('a')[1]!.trigger('click')
-
-    expect(target.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
-    expect(wrapper.findAll('a')[1]!.attributes('aria-current')).toBe('location')
-
-    wrapper.unmount()
-    target.remove()
-  })
-})
-
 describe('AppFooter', () => {
   it('assina o projeto com link para o LinkedIn em nova aba', () => {
     const link = mount(AppFooter).get('a')
@@ -634,8 +586,51 @@ describe('ThemeToggle', () => {
     const items = wrapper.findAll('button')
     expect(items.map((item) => item.attributes('aria-label'))).toEqual(['Tema claro', 'Tema escuro', 'Seguir o sistema'])
 
-    await items[0]!.trigger('click')
     expect(useTheme().preference.value).toBe('light')
+    await items[1]!.trigger('click')
+    expect(useTheme().preference.value).toBe('dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    await items[0]!.trigger('click')
     expect(document.documentElement.classList.contains('dark')).toBe(false)
   })
 })
+
+describe('RevenueBar', () => {
+  const slices = [
+    { key: 'taxes' as const, value: 90, share: 0.09 },
+    { key: 'costOfSales' as const, value: 310, share: 0.31 },
+    { key: 'variableExpenses' as const, value: 10, share: 0.01 },
+    { key: 'fixedExpenses' as const, value: 470, share: 0.47 },
+  ]
+
+  it('mostra quanto cada etapa consome de cada R$ 100 e quanto sobra', () => {
+    const wrapper = mountWithProviders(RevenueBar, {
+      props: { flow: { revenue: 1000, slices, result: 120, resultShare: 0.12 } },
+    })
+    const text = wrapper.text().replace(/\s/g, ' ')
+    expect(wrapper.get('figcaption').text()).toBe('De cada R$ 100 vendidos')
+    expect(text).toContain('R$ 31 custos das vendas')
+    expect(text).toContain('R$ 12 sobram')
+    expect(wrapper.find('[style*="left"]').exists()).toBe(false)
+  })
+
+  it('esconde da vista o rótulo das fatias estreitas, mas mantém para leitores de tela', () => {
+    const wrapper = mountWithProviders(RevenueBar, {
+      props: { flow: { revenue: 1000, slices, result: 120, resultShare: 0.12 } },
+    })
+    const variable = wrapper.findAll('li')[2]!
+    expect(variable.text()).toContain('despesas variáveis')
+    expect(variable.findAll('.sr-only')).toHaveLength(2)
+  })
+
+  it('no prejuízo, diz quanto a operação gastou e marca o que passou da receita', () => {
+    const loss = [...slices.slice(0, 3), { key: 'fixedExpenses' as const, value: 670, share: 0.67 }]
+    const wrapper = mountWithProviders(RevenueBar, {
+      props: { flow: { revenue: 1000, slices: loss, result: -80, resultShare: -0.08 } },
+    })
+    expect(wrapper.get('figcaption').text().replace(/\s/g, ' ')).toBe('De cada R$ 100 vendidos, a operação gastou R$ 108')
+    expect(wrapper.text().replace(/\s/g, ' ')).toContain('R$ 8 faltam')
+    expect(wrapper.get('[style*="left"]').text()).toBe('receita')
+  })
+})
+

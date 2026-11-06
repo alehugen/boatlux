@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { PhCalendarBlank } from '@phosphor-icons/vue'
+import { useId } from 'vue'
 import {
   Select,
   SelectContent,
@@ -15,16 +16,22 @@ export interface PeriodGroup {
   options: readonly { key: string; label: string }[]
 }
 
-defineProps<{ groups: readonly PeriodGroup[] }>()
+/** Seletor de período sobre a faixa marinho. `compact` esconde o rótulo (barra fixa). */
+withDefaults(defineProps<{ groups: readonly PeriodGroup[]; compact?: boolean }>(), { compact: false })
 const model = defineModel<string>({ required: true })
+const labelId = useId()
 </script>
 
 <template>
   <div class="flex flex-col gap-1.5 text-sm">
-    <span id="periodo" class="hidden font-medium text-muted-foreground lg:block">Período</span>
+    <span :id="labelId" :class="compact ? 'sr-only' : 'text-band-muted'">Período</span>
     <Select v-model="model">
-      <SelectTrigger aria-labelledby="periodo" class="w-36 bg-card shadow-card lg:w-full">
-        <PhCalendarBlank class="text-muted-foreground" aria-hidden="true" />
+      <SelectTrigger
+        :aria-labelledby="labelId"
+        class="w-44 border-band-border bg-transparent text-band-foreground transition-colors duration-(--duration-fast) hover:border-band-muted hover:bg-white/5 data-[size=default]:h-10 dark:bg-transparent dark:hover:bg-white/5 [&_svg]:text-band-muted"
+        :class="compact && 'data-[size=default]:h-9'"
+      >
+        <PhCalendarBlank aria-hidden="true" />
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

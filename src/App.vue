@@ -11,20 +11,20 @@ const scrolled = useScrolled()
   <TooltipProvider :delay-duration="200">
     <div class="flex min-h-screen flex-col">
       <header
-        class="sticky top-0 z-(--layer-header) h-16 border-b bg-background/90 backdrop-blur-md transition-colors duration-(--duration-base) ease-out"
-        :class="scrolled ? 'border-strong' : 'border-border'"
+        class="sticky top-0 z-(--layer-header) h-18 bg-band text-band-foreground transition-shadow duration-(--duration-base) ease-out"
+        :class="scrolled && 'shadow-floating'"
       >
-        <nav class="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4">
-          <RouterLink :to="{ name: 'import' }" class="rounded-md text-lg font-bold tracking-tight">
-            Boat <span class="text-marker-ink">Lux</span>
+        <nav class="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
+          <RouterLink :to="{ name: 'import' }" class="rounded-sm" aria-label="Boat Lux, página inicial">
+            <img src="/brand/logo-white.png" alt="" width="133" height="36" class="h-9 w-auto" />
           </RouterLink>
           <ThemeToggle />
         </nav>
       </header>
 
-      <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-10">
+      <main class="flex-1">
         <RouterView v-slot="{ Component, route }">
-          <Transition name="page" mode="out-in">
+          <Transition name="page" mode="out-in" :duration="{ enter: 560, leave: 180 }">
             <component :is="Component" :key="route.path" />
           </Transition>
         </RouterView>

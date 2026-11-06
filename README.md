@@ -9,7 +9,7 @@ Todo o processamento acontece **no navegador**, e nenhum dado é enviado para se
 ## Como usar
 
 1. Arraste a planilha da DRE (`.xlsx` ou `.xls`) para a página inicial.
-2. Clique em **Visualizar**.
+2. A DRE abre direto no último mês encerrado. As DREs importadas ficam listadas na página inicial.
 
 ## Funcionalidades
 
@@ -18,6 +18,8 @@ Todo o processamento acontece **no navegador**, e nenhum dado é enviado para se
 - **Só meses encerrados:** o mês atual, os seguintes e meses sem movimento ficam de fora.
 - **Pontos de análise** em linguagem de negócio, incluindo o ponto de equilíbrio.
 - **Meta de lucro:** quanto faturar por mês para atingir um lucro escolhido, em slides.
+- **De cada R$ 100 vendidos:** no topo, a receita dividida entre impostos, custos, despesas e o que sobra (EBITDA); no prejuízo, mostra o quanto passou da receita.
+- **Barra de período fixa:** ao rolar a página, o período e o resultado continuam visíveis no topo, com o seletor à mão.
 - **Gráficos:** para onde vai a receita, composição da receita e saldo de caixa.
 - **DRE completa** com grupos recolhíveis, valores (R$) ou AV%, escolha dos meses e tela cheia.
 - **Composição de cada valor:** se a planilha tiver uma aba de fluxo de caixa, clicar em um valor abre os lançamentos que o compõem.
@@ -60,28 +62,27 @@ npm run dev
 | Leitura de arquivos | [SheetJS](https://sheetjs.com/) (XLSX/XLS), instalada pelo CDN oficial |
 | Gráficos | [ECharts](https://echarts.apache.org/) + vue-echarts |
 | Ícones | [Phosphor Icons](https://phosphoricons.com/) |
-| Fontes | Montserrat (texto) e Cinzel (títulos), da identidade da marca; Courier Prime no cupom da meta de lucro |
+| Fontes | WeezerFont, a fonte do site da marca (`src/assets/fonts/`); Courier Prime no cupom da meta de lucro |
 | Testes | [Vitest](https://vitest.dev/), Vue Test Utils, happy-dom |
 
 ## Design system
 
 Os tokens ficam em `src/presentation/main.css` e seguem a identidade do site [boatlux.com.br](https://boatlux.com.br/):
 
-| Token | Cor | Uso no site |
+| Token | Cor | Papel |
 |---|---|---|
-| `brand-navy` | `#0B4976` | Cor primária |
-| `brand-deep` | `#00244F` | Cor secundária (marinho profundo) |
-| `brand-cyan` | `#12BFF9` | Destaque |
-| `brand-sky` | `#7EC1F3` | Azul claro de apoio |
+| `brand-deep` / `band` | `#00244F` | Cabeçalho e faixa "casco" no topo das páginas (igual nos dois temas) |
+| `brand-navy` / `primary` | `#0B4976` | Botões, texto forte e linhas de resultado da DRE (tema claro) |
+| `brand-cyan` / `water` | `#12BFF9` | Período selecionado, o que sobra da receita e linhas de resultado (tema escuro) |
+| `brand-sky` | `#7EC1F3` | Azul de apoio |
 | `brand-mist` | `#F4F8FB` | Fundo claro |
-| `brand-gray` | `#8D8F90` | Texto secundário |
-| `brand-ink` | `#242424` | Texto escuro |
 
-- **Tema claro:** fundo `#F4F8FB`, texto marinho e primária `#0B4976`.
-- **Tema escuro (padrão):** fundos em marinho profundo e primária ciano `#12BFF9`.
-- **Cantos** quase retos (`--radius: 0.25rem`), como no site.
-- **Títulos** (`h1`, `h2`) em Cinzel; o utilitário `eyebrow` dá o rótulo em caixa alta com espaçamento usado nos botões do site.
-- Os gráficos usam a cor da marca como primeira série (`useChartTheme.ts`).
+- **Tema claro** é o padrão; o escuro usa fundos em marinho profundo e destaque ciano.
+- **Superfícies:** cards de indicadores, pontos de análise, gráficos e tabelas usam o utilitário `surface` (borda suave, cantos de 0,7rem e elevação em camadas `--elevation-1..3`).
+- **Fonte:** WeezerFont, a mesma de títulos e textos do site [boatluxsc.com.br](https://www.boatluxsc.com.br/). Só tem peso regular, então a hierarquia vem de tamanho e cor.
+- **Logo:** versão branca em `public/brand/`, usada no cabeçalho e na tela de carregamento.
+- **Movimento:** a barra "De cada R$ 100" cresce em sequência na entrada, os valores principais contam até o novo número ao trocar de período e a troca de página anima só o conteúdo (as faixas marinho ficam sólidas). Tudo respeita o movimento reduzido do sistema.
+- Os gráficos usam dois azuis da marca nas primeiras séries (`useChartTheme.ts`).
 
 ## Arquitetura
 

@@ -42,7 +42,7 @@ const {
         ref="panel"
         :class="
           cn(
-            'overflow-hidden rounded-xl border bg-card text-card-foreground shadow-card',
+            'surface overflow-hidden',
             props.class,
             expanded && [
               'relative flex size-full flex-col rounded-2xl shadow-floating',

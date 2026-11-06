@@ -3,7 +3,7 @@ defineProps<{ columns: string }>()
 </script>
 
 <template>
-  <div class="grid gap-3" :class="columns">
+  <div class="grid gap-4" :class="columns">
     <slot />
   </div>
 </template>

@@ -2,39 +2,20 @@
 @import 'tw-animate-css';
 @import 'shadcn-vue/tailwind.css';
 
-/* Tipografia da marca Boat Lux (boatlux.com.br): Montserrat no texto, Cinzel nos títulos. */
+/*
+ * Fonte da marca: WeezerFont, a mesma de títulos e textos do site boatluxsc.com.br.
+ * Só existe no peso regular; a hierarquia vem de tamanho e cor, não de negrito.
+ * Os números têm largura fixa, então as colunas da DRE ficam alinhadas.
+ */
 @font-face {
-  font-family: 'Montserrat Variable';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 900;
-  src: url('@fontsource-variable/montserrat/files/montserrat-latin-wght-normal.woff2') format('woff2-variations');
-}
-
-@font-face {
-  font-family: 'Cinzel';
+  font-family: 'WeezerFont';
   font-style: normal;
   font-display: swap;
   font-weight: 400;
-  src: url('@fontsource/cinzel/files/cinzel-latin-400-normal.woff2') format('woff2');
+  src: url('@/assets/fonts/WeezerFont.woff2') format('woff2');
 }
 
-@font-face {
-  font-family: 'Cinzel';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 600;
-  src: url('@fontsource/cinzel/files/cinzel-latin-600-normal.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Cinzel';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 700;
-  src: url('@fontsource/cinzel/files/cinzel-latin-700-normal.woff2') format('woff2');
-}
-
+/* Cupom da meta de lucro */
 @font-face {
   font-family: 'Courier Prime';
   font-style: normal;
@@ -54,9 +35,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: 'Montserrat Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Cinzel', ui-serif, Georgia, serif;
-  --color-printer: #001530;
+  --font-sans: 'WeezerFont', 'Century Gothic', ui-sans-serif, system-ui, sans-serif;
+  --font-receipt: 'Courier Prime', ui-monospace, 'Courier New', monospace;
 
   /* Paleta oficial da Boat Lux (cores globais do site boatlux.com.br) */
   --color-brand-navy: #0b4976;
@@ -64,47 +44,34 @@
   --color-brand-cyan: #12bff9;
   --color-brand-sky: #7ec1f3;
   --color-brand-mist: #f4f8fb;
-  --color-brand-gray: #8d8f90;
-  --color-brand-ink: #242424;
 
-  --font-receipt: 'Courier Prime', ui-monospace, 'Courier New', monospace;
+  /* Movimento: saídas rápidas, entradas longas e suaves. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 0.75, 0.2);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --duration-fast: 180ms;
+  --duration-base: 280ms;
+  --duration-slow: 480ms;
+  --duration-slower: 900ms;
 
-  --text-display: 4.5rem;
-  --text-display--line-height: 0.98;
-  --text-display--letter-spacing: -0.04em;
-
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --duration-fast: 160ms;
-  --duration-base: 260ms;
-  --duration-slow: 420ms;
-
-  --animate-rise: rise 640ms var(--ease-out) both;
-  --animate-print: print 1400ms cubic-bezier(0.45, 0, 0.2, 1) both;
-  --animate-stamp: stamp 420ms var(--ease-spring) both;
+  --animate-stamp: stamp 480ms var(--ease-spring) both;
   --animate-modal-in: modal-in var(--duration-slow) var(--ease-out) both;
   --animate-modal-out: modal-out var(--duration-base) var(--ease-in) both;
   --animate-backdrop-in: backdrop-in var(--duration-slow) var(--ease-out) both;
   --animate-backdrop-out: backdrop-in var(--duration-base) var(--ease-in) reverse both;
 
-  @keyframes print {
-    from {
-      transform: translateY(-100%);
-    }
-  }
-
   @keyframes modal-in {
     from {
       opacity: 0;
-      transform: translateY(12px) scale(0.96);
+      transform: translateY(12px) scale(0.97);
     }
   }
 
   @keyframes modal-out {
     to {
       opacity: 0;
-      transform: translateY(8px) scale(0.97);
+      transform: translateY(8px) scale(0.98);
     }
   }
 
@@ -118,14 +85,6 @@
     from {
       opacity: 0;
       transform: scale(1.8);
-    }
-  }
-
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-      filter: blur(2px);
     }
   }
 }
@@ -151,9 +110,7 @@
   --color-destructive-soft: var(--destructive-soft);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
-  --color-total: var(--total);
   --color-border: var(--border);
-  --color-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-paper: var(--paper);
@@ -161,6 +118,19 @@
   --color-paper-rule: var(--paper-rule);
   --color-paper-loss: var(--paper-loss);
   --color-paper-gain: var(--paper-gain);
+  --color-band: var(--band);
+  --color-band-foreground: var(--band-foreground);
+  --color-band-muted: var(--band-muted);
+  --color-band-border: var(--band-border);
+  --color-band-gain: var(--band-gain);
+  --color-band-loss: var(--band-loss);
+  --color-water: var(--water);
+  --color-water-foreground: var(--water-foreground);
+  --color-water-soft: var(--water-soft);
+  --color-result: var(--result);
+  --color-result-foreground: var(--result-foreground);
+  --color-result-loss: var(--result-loss);
+  --color-result-highlight: var(--result-highlight);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -170,16 +140,17 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 
   --shadow-card: var(--elevation-1);
+  --shadow-raised: var(--elevation-2);
+  --shadow-floating: var(--elevation-3);
   --shadow-primary: var(--elevation-primary);
-  --shadow-floating: var(--elevation-2);
 }
 
 :root {
   color-scheme: light;
-  /* O site usa cantos quase retos (0–3px). */
-  --radius: 0.25rem;
+  /* Cantos discretos, como no site da marca, com um pouco mais de suavidade nos cards. */
+  --radius: 0.5rem;
 
-  --background: #f4f8fb;
+  --background: #f2f6fa;
   --foreground: #00244f;
   --body: #3b5068;
   --card: #ffffff;
@@ -191,30 +162,46 @@
   --marker-ink: #0b4976;
   --secondary: #e6eef5;
   --secondary-foreground: #00244f;
-  --muted: #e6eef5;
-  --muted-foreground: #586b80;
-  --accent: color-mix(in oklch, #7ec1f3 22%, var(--card));
+  --muted: #edf2f7;
+  --muted-foreground: #5a6c80;
+  --accent: #e3f1fc;
   --accent-foreground: #0b4976;
   --destructive: #c4314b;
   --destructive-soft: #fbe3e8;
   --success: #157a50;
   --success-soft: #dcf5ea;
-  --total: #0a6fa3;
-  --border: #dae4ed;
-  --border-strong: #b6c9da;
-  --input: #c3d3e1;
+  --border: #e0e8f0;
+  --input: #c9d7e4;
   --ring: #0b4976;
+
+  /* Faixa "casco": topo marinho das páginas, igual nos dois temas, como no site da marca. */
+  --band: #00244f;
+  --band-foreground: #eef5fb;
+  --band-muted: #a9c0d6;
+  --band-border: #2a5683;
+  --band-gain: #7ee3b5;
+  --band-loss: #ff9fb0;
+
+  /* "Água": o período selecionado e o que sobra da receita. */
+  --water: #12bff9;
+  --water-foreground: #00244f;
+  --water-soft: #e0f4fd;
+
+  /* Linhas de resultado da DRE (lucro bruto, margem, EBITDA...): a leitura principal da tabela. */
+  --result: #0b4976;
+  --result-foreground: #ffffff;
+  --result-loss: #ffb3c1;
+  --result-highlight: #1b6299;
 
   --paper: #fbfbf7;
   --paper-ink: #1a1a1a;
   --paper-rule: #a3a3a3;
   --paper-loss: #b3261e;
   --paper-gain: #1f8a5b;
-  --glow: transparent;
 
-  --elevation-1: 0 1px 2px rgb(0 36 79 / 0.04), 0 2px 6px -2px rgb(0 36 79 / 0.07);
-  --elevation-2: 0 1px 2px rgb(0 36 79 / 0.04), 0 6px 14px -4px rgb(0 36 79 / 0.1),
-    0 18px 36px -14px rgb(0 36 79 / 0.2);
+  --elevation-1: 0 1px 2px rgb(0 36 79 / 0.05), 0 3px 8px -2px rgb(0 36 79 / 0.07), 0 14px 30px -18px rgb(0 36 79 / 0.22);
+  --elevation-2: 0 2px 4px rgb(0 36 79 / 0.05), 0 10px 22px -6px rgb(0 36 79 / 0.13), 0 28px 52px -22px rgb(0 36 79 / 0.3);
+  --elevation-3: 0 2px 6px rgb(0 36 79 / 0.08), 0 18px 40px -10px rgb(0 36 79 / 0.28);
   --elevation-primary: 0 1px 2px rgb(11 73 118 / 0.25), 0 8px 20px -8px rgb(18 191 249 / 0.55);
 
   --layer-raised: 10;
@@ -226,36 +213,40 @@
 :root.dark {
   color-scheme: dark;
 
-  --background: #001a3a;
+  --background: #001833;
   --foreground: #eef5fb;
   --body: #c3d5e6;
-  --card: #00244f;
+  --card: #032b5a;
   --card-foreground: #eef5fb;
-  --popover: #0a2f5e;
+  --popover: #0a3466;
   --popover-foreground: #eef5fb;
   --primary: #12bff9;
   --primary-foreground: #00244f;
   --marker-ink: #7ec1f3;
-  --secondary: #0a2f5e;
+  --secondary: #0a3466;
   --secondary-foreground: #eef5fb;
-  --muted: #0a2f5e;
-  --muted-foreground: #93abc3;
+  --muted: #0a3466;
+  --muted-foreground: #9ab2c9;
   --accent: color-mix(in oklch, var(--primary) 14%, var(--card));
   --accent-foreground: #a9dcfb;
   --destructive: #ff8fa3;
   --destructive-soft: color-mix(in oklch, var(--destructive) 16%, var(--card));
   --success: #5fd3a0;
   --success-soft: color-mix(in oklch, var(--success) 14%, var(--card));
-  --total: #7ec1f3;
-  --border: #12386a;
-  --border-strong: #22507f;
+  --border: #154070;
   --input: #22507f;
   --ring: #12bff9;
-  --glow: #0b4976;
 
-  --elevation-1: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 10 26 / 0.35), 0 2px 8px -2px rgb(0 10 26 / 0.35);
-  --elevation-2: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 2px 4px rgb(0 10 26 / 0.35), 0 10px 20px -6px rgb(0 10 26 / 0.45),
-    0 24px 44px -16px rgb(0 10 26 / 0.65);
+  --water-soft: color-mix(in oklch, var(--water) 16%, var(--card));
+
+  --result: #12bff9;
+  --result-foreground: #00244f;
+  --result-loss: #8a1430;
+  --result-highlight: #6fd8fb;
+
+  --elevation-1: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 8 20 / 0.4), 0 10px 24px -12px rgb(0 8 20 / 0.6);
+  --elevation-2: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 2px 4px rgb(0 8 20 / 0.4), 0 18px 36px -14px rgb(0 8 20 / 0.7);
+  --elevation-3: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 4px 10px rgb(0 8 20 / 0.45), 0 24px 48px -12px rgb(0 8 20 / 0.75);
   --elevation-primary: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 22px -8px rgb(18 191 249 / 0.5);
 }
 
@@ -264,13 +255,12 @@
     @apply border-border outline-ring/50;
   }
 
-  body {
-    @apply bg-background font-sans text-foreground antialiased;
+  html {
+    scroll-padding-top: 9rem;
   }
 
   body {
-    background-image: radial-gradient(1200px 640px at 80% -10%, var(--glow), transparent 70%);
-    background-repeat: no-repeat;
+    @apply bg-background font-sans text-foreground antialiased;
   }
 
   h1,
@@ -279,15 +269,8 @@
     text-wrap: balance;
   }
 
-  /* Títulos em Cinzel, como no site da marca. */
-  h1,
-  h2 {
-    font-family: var(--font-display);
-    letter-spacing: 0.01em;
-  }
-
   ::selection {
-    background-color: color-mix(in oklch, var(--primary) 45%, transparent);
+    background-color: color-mix(in oklch, var(--water) 40%, transparent);
   }
 
   a:not([data-slot]):focus-visible {
@@ -306,36 +289,18 @@
   letter-spacing: -0.01em;
 }
 
-/* Rótulo em caixa alta com espaçamento, padrão dos botões e sobretítulos do site. */
-@utility eyebrow {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+/* Superfície elevada padrão: cards de indicadores, pontos de análise, gráficos e tabelas. */
+@utility surface {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background-color: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--elevation-1);
 }
 
 @utility receipt-edge {
   --tooth: 18px;
   mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / var(--tooth) 100%;
-}
-
-@utility card-interactive {
-  transition-property: transform, box-shadow, --tw-ring-color;
-  transition-duration: var(--duration-slow);
-  transition-timing-function: var(--ease-out);
-
-  @media (hover: hover) {
-    &:hover {
-      transform: translateY(-2px);
-      --tw-shadow: var(--elevation-2);
-      --tw-ring-color: var(--border-strong);
-    }
-  }
-
-  &:active {
-    transform: translateY(0) scale(0.995);
-    transition-duration: var(--duration-fast);
-  }
 }
 
 @utility link {
@@ -351,29 +316,56 @@
   }
 }
 
-.page-enter-active {
+/*
+ * Troca de página: só o conteúdo marcado com .page-fade anima.
+ * O fundo das faixas marinho fica sólido, sem piscar o fundo claro por baixo do cabeçalho.
+ */
+.page-enter-active .page-fade {
   transition:
     opacity var(--duration-slow) var(--ease-out),
     transform var(--duration-slow) var(--ease-out);
 }
 
-.page-leave-active {
+.page-enter-active .page-fade + .page-fade {
+  transition-delay: 60ms;
+}
+
+.page-leave-active .page-fade {
   transition: opacity var(--duration-fast) var(--ease-in);
 }
 
-.page-enter-from {
+.page-enter-from .page-fade {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(10px);
 }
 
-.page-leave-to {
+.page-leave-to .page-fade {
   opacity: 0;
 }
 
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: var(--duration-slow);
-  animation-timing-function: var(--ease-out);
+  animation-timing-function: var(--ease-in-out);
+}
+
+/* Barra de período fixa: desce de trás do cabeçalho. */
+.dock-enter-active,
+.dock-leave-active {
+  transition:
+    transform var(--duration-base) var(--ease-out),
+    opacity var(--duration-base) var(--ease-out);
+}
+
+.dock-leave-active {
+  transition-timing-function: var(--ease-in);
+  transition-duration: var(--duration-fast);
+}
+
+.dock-enter-from,
+.dock-leave-to {
+  opacity: 0;
+  transform: translateY(-100%);
 }
 
 .list-move,
@@ -387,7 +379,7 @@
 .list-enter-from,
 .list-leave-to {
   opacity: 0;
-  transform: translateX(-8px);
+  transform: translateY(-6px);
 }
 
 .list-leave-active {
@@ -413,10 +405,7 @@
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
-  }
-
-  .card-interactive:hover {
-    transform: none;
   }
 }

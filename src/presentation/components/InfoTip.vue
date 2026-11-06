@@ -3,7 +3,10 @@ import { PhInfo } from '@phosphor-icons/vue'
 import { Button } from '@/presentation/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/presentation/components/ui/tooltip'
 
-withDefaults(defineProps<{ text: string; label?: string }>(), { label: 'Como esta informação é calculada' })
+withDefaults(defineProps<{ text: string; label?: string; onBand?: boolean }>(), {
+  label: 'Como esta informação é calculada',
+  onBand: false,
+})
 </script>
 
 <template>
@@ -12,7 +15,12 @@ withDefaults(defineProps<{ text: string; label?: string }>(), { label: 'Como est
       <Button
         variant="ghost"
         size="icon-xs"
-        class="rounded-full text-muted-foreground hover:text-foreground"
+        :class="[
+          'rounded-full',
+          onBand
+            ? 'text-band-muted hover:bg-band-border hover:text-band-foreground'
+            : 'text-muted-foreground hover:text-foreground',
+        ]"
         :aria-label="label"
         @click.stop.prevent
       >

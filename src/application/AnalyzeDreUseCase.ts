@@ -93,6 +93,22 @@ export interface CellBreakdown {
 
 export type ReachableProjection = Exclude<ProfitTargetProjection, { status: 'unreachable' }>
 
+export type RevenueSliceKey = 'taxes' | 'costOfSales' | 'variableExpenses' | 'fixedExpenses'
+
+export interface RevenueSlice {
+  readonly key: RevenueSliceKey
+  readonly value: number
+  readonly share: number
+}
+
+/** Para onde vai a receita bruta até o EBITDA: o que cada etapa da DRE consome e o que sobra. */
+export interface RevenueFlow {
+  readonly revenue: number
+  readonly slices: readonly RevenueSlice[]
+  readonly result: number
+  readonly resultShare: number
+}
+
 export interface DreAnalysis {
   readonly indexes: number[]
   readonly previousIndexes: number[] | null
@@ -101,6 +117,7 @@ export interface DreAnalysis {
   readonly profitTarget: ProfitTargetBase | null
   readonly revenueSources: RevenueSource[]
   readonly expenses: DreExpense[]
+  readonly revenueFlow: RevenueFlow | null
   readonly monthly: {
     readonly revenue: number[]
     readonly ebitda: number[] | null
@@ -176,6 +193,7 @@ export class AnalyzeDreUseCase {
       profitTarget,
       revenueSources: this.revenueSources(report, indexes),
       expenses,
+      revenueFlow: this.revenueFlow(report, indexes, revenue),
       monthly,
       facts: {
         revenueChange: relativeChange(revenue, previousRevenue),
@@ -254,6 +272,31 @@ export class AnalyzeDreUseCase {
           ? { fronts, sales: salesFor(share), price: withPrice ? priceFor(share) : null, fixed: withFixed ? share : null }
           : null,
     }
+  }
+
+  private revenueFlow(report: DreReport, indexes: number[], revenue: number): RevenueFlow | null {
+    if (revenue <= 0 || !report.metric(DreMetric.Ebitda)) return null
+    const value = (metric: DreMetric) => (report.metric(metric) ? report.valueOf(report.metric(metric), indexes) : null)
+
+    const taxes = value(DreMetric.SalesTaxes)
+    const checkpoints: { key: RevenueSliceKey; remaining: number | null }[] = [
+      { key: 'taxes', remaining: taxes === null ? null : revenue + taxes },
+      { key: 'costOfSales', remaining: value(DreMetric.GrossProfit) },
+      { key: 'variableExpenses', remaining: value(DreMetric.ContributionMargin) },
+      { key: 'fixedExpenses', remaining: value(DreMetric.Ebitda) },
+    ]
+
+    const slices: RevenueSlice[] = []
+    let previous = revenue
+    for (const { key, remaining } of checkpoints) {
+      if (remaining === null) continue
+      const consumed = previous - remaining
+      if (consumed > 0) slices.push({ key, value: consumed, share: consumed / revenue })
+      previous = remaining
+    }
+
+    const result = value(DreMetric.Ebitda)!
+    return { revenue, slices, result, resultShare: result / revenue }
   }
 
   private resolve(report: DreReport, selection: DreSelection): number[] {

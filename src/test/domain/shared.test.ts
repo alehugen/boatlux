@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
-  compareByPeriod,
   comparePeriods,
   detectNumberConvention,
   normalizeText,
   parseNumber,
-  parsePeriodFromText,
   periodKey,
   ratio,
   relativeChange,
@@ -90,25 +88,6 @@ describe('períodos', () => {
   })
 })
 
-describe('parsePeriodFromText', () => {
-  it.each([
-    ['Relatório_Curva_ABC- set.2026', { year: 2026, month: 9 }],
-    ['curva_abc_set_2026', { year: 2026, month: 9 }],
-    ['Curva ABC setembro de 2026', { year: 2026, month: 9 }],
-    ['abc março 2026', { year: 2026, month: 3 }],
-    ['abc out/26', { year: 2026, month: 10 }],
-    ['Relatório_Lucro_por_Produto-out.2026', { year: 2026, month: 10 }],
-    ['abc_09-2026', { year: 2026, month: 9 }],
-    ['abc 2026_09', { year: 2026, month: 9 }],
-  ])('extrai o mês de "%s"', (input, expected) => {
-    expect(parsePeriodFromText(input)).toEqual(expected)
-  })
-
-  it.each(['MARGEM 2026', 'abc 00-2026', 'abc 13-2026', 'relatorio'])('não inventa mês em "%s"', (input) => {
-    expect(parsePeriodFromText(input)).toBeNull()
-  })
-})
-
 describe('ratio', () => {
   it('divide com proteção contra zero e valores inválidos', () => {
     expect(ratio(1, 4)).toBe(0.25)
@@ -136,13 +115,3 @@ describe('relativeChange', () => {
   })
 })
 
-describe('compareByPeriod', () => {
-  it('ordena por mês e deixa relatórios sem mês no fim', () => {
-    const items = [
-      { name: 'sem mês', period: null },
-      { name: 'out', period: { year: 2026, month: 10 } },
-      { name: 'set', period: { year: 2026, month: 9 } },
-    ]
-    expect([...items].sort(compareByPeriod).map((item) => item.name)).toEqual(['set', 'out', 'sem mês'])
-  })
-})

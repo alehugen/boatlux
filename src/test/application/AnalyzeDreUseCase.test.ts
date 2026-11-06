@@ -282,3 +282,36 @@ describe('meta de lucro', () => {
     expect(yearly.revenue).toBeCloseTo(3100 / 3)
   })
 })
+
+describe('para onde vai a receita', () => {
+  it('divide a receita entre as etapas da DRE e mostra o que sobra até o EBITDA', () => {
+    const february = useCase.execute(report, { type: 'month', index: 1 })
+    expect(february.revenueFlow).toEqual({
+      revenue: 1200,
+      slices: [
+        { key: 'taxes', value: 120, share: 0.1 },
+        { key: 'costOfSales', value: 350, share: 350 / 1200 },
+        { key: 'fixedExpenses', value: 520, share: 520 / 1200 },
+      ],
+      result: 210,
+      resultShare: 210 / 1200,
+    })
+  })
+
+  it('no prejuízo, as etapas passam da receita e o resultado fica negativo', () => {
+    const flow = march.revenueFlow!
+    expect(flow.slices.map((s) => [s.key, s.value])).toEqual([
+      ['taxes', 90],
+      ['costOfSales', 280],
+      ['fixedExpenses', 600],
+    ])
+    expect(flow.result).toBe(-70)
+    expect(flow.slices.reduce((total, s) => total + s.value, 0)).toBe(flow.revenue - flow.result)
+  })
+
+  it('não monta a divisão sem a linha do EBITDA', () => {
+    const lines = DRE_LINES.filter((line) => line?.[0] !== 'RESULTADO LÍQUIDO (EBITDA)')
+    const withoutEbitda = DreReport.fromTable({ name: 'DRE', sheet: 'DRE Geral', rows: dreRows({ lines }) })!
+    expect(useCase.execute(withoutEbitda, { type: 'month', index: 2 }).revenueFlow).toBeNull()
+  })
+})

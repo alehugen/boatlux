@@ -1,10 +1,10 @@
 import { computed } from 'vue'
 import { useTheme } from './useTheme'
 
-// A primeira cor de cada tema é a da marca Boat Lux (azul-marinho no claro, ciano no escuro).
+// As duas primeiras cores são azuis da marca Boat Lux; as demais diferenciam séries extras.
 const SERIES = {
-  light: ['#0b4976', '#eb6834', '#1baf7a', '#eda100', '#12a5d8', '#e87ba4', '#4a3aa7', '#e34948'],
-  dark: ['#12bff9', '#d95926', '#199e70', '#c98500', '#7ec1f3', '#d55181', '#9085e9', '#e66767'],
+  light: ['#0b4976', '#4b9fd8', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#e34948'],
+  dark: ['#12bff9', '#5b86c0', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9', '#e66767'],
 }
 
 const CHROME = {
@@ -45,7 +45,7 @@ export function useChartTheme() {
     return {
       series,
       chrome,
-      fontFamily: "'Montserrat Variable', ui-sans-serif, system-ui, sans-serif",
+      fontFamily: "'WeezerFont', 'Century Gothic', ui-sans-serif, system-ui, sans-serif",
       axisTooltip: {
         ...tooltip,
         trigger: 'axis' as const,

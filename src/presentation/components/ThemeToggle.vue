@@ -32,7 +32,7 @@ function select(value: unknown) {
     size="sm"
     :model-value="preference"
     aria-label="Tema"
-    class="rounded-lg bg-muted p-0.5"
+    class="rounded-md border border-band-border p-0.5"
     @update:model-value="select"
   >
     <Tooltip v-for="option in OPTIONS" :key="option.value">
@@ -40,7 +40,7 @@ function select(value: unknown) {
         <ToggleGroupItem
           :value="option.value"
           :aria-label="option.label"
-          class="rounded-md! px-2 text-muted-foreground transition-[color,background-color,box-shadow] duration-(--duration-base) ease-out hover:bg-transparent hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-card dark:aria-pressed:bg-strong"
+          class="rounded-sm! px-2 text-band-muted transition-[color,background-color] duration-(--duration-base) ease-out hover:bg-transparent hover:text-band-foreground focus-visible:ring-water aria-pressed:bg-band-border aria-pressed:text-band-foreground"
         >
           <component
             :is="option.icon"

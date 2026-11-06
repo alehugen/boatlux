@@ -1,12 +1,11 @@
 import { flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { container } from '@/infrastructure/container'
 import RankingBarChart from '@/presentation/components/RankingBarChart.vue'
 import TrendChart from '@/presentation/components/TrendChart.vue'
-import { useFileImport } from '@/presentation/composables/useFileImport'
-import { useReports } from '@/presentation/composables/useReports'
+import FileDropzone from '@/presentation/components/FileDropzone.vue'
 import ImportPage from '@/presentation/pages/ImportPage.vue'
 import NotFoundPage from '@/presentation/pages/NotFoundPage.vue'
 import { routeForReport, routes } from '@/presentation/router'
@@ -45,19 +44,36 @@ describe('NotFoundPage', () => {
 })
 
 describe('ImportPage', () => {
-  it('resume a importação, lista a DRE e esconde do resumo relatórios removidos', async () => {
-    const page = mountWithProviders(ImportPage, { global: { stubs } })
-    await useFileImport().importFiles([xlsxFile('DRE 2026.xlsx', { 'DRE Geral': dreRows() }), new File([], 'vazio.xlsx')])
+  async function mountImport() {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/')
+    const page = mountWithProviders(ImportPage, { global: { stubs, plugins: [router] } })
+    return { page, router }
+  }
+
+  it('abre direto a DRE quando uma planilha é importada sem erros', async () => {
+    const { page, router } = await mountImport()
+    page.getComponent(FileDropzone).vm.$emit('select', [xlsxFile('DRE 2026.xlsx', { 'DRE Geral': dreRows() })])
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('dre'))
+  })
+
+  it('com erro, fica na página, mostra o erro e lista a DRE com o resultado do último mês', async () => {
+    const { page, router } = await mountImport()
+    page.getComponent(FileDropzone).vm.$emit('select', [
+      xlsxFile('DRE 2026.xlsx', { 'DRE Geral': dreRows() }),
+      new File([], 'vazio.xlsx'),
+    ])
     await flushPromises()
 
-    expect(page.get('[role="status"]').text()).toContain('DRE 2026')
+    expect(router.currentRoute.value.name).toBe('import')
     expect(page.get('[role="alert"]').text()).toBe('O arquivo está vazio: vazio.xlsx')
-    expect(page.text()).toContain('3 meses, de jan/26 a mar/26')
+    const row = page.get('li')
+    expect(row.text()).toContain('DRE 2026')
+    expect(row.text()).toContain('jan/26 a mar/26, 3 meses')
+    expect(row.text()).toContain('No vermelho em mar/26')
 
-    const { reports, remove } = useReports()
-    await remove(reports.value[0]!.id)
+    await row.get('button[aria-label="Remover DRE 2026"]').trigger('click')
     await flushPromises()
-    expect(page.find('[role="status"]').exists()).toBe(false)
     expect(page.text()).toContain('Nenhuma DRE importada ainda.')
 
     page.vm.$.appContext.app.unmount()

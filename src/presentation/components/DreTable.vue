@@ -62,9 +62,16 @@ function format(line: DreLine, index: number, as: Mode) {
   return base && value ? formatPercent(value / base) : '–'
 }
 
-const isTotal = (line: DreLine) => !line.parentId && line.kind !== DreLineKind.Balance
-const valueColor = (line: DreLine, index: number) =>
-  isTotal(line) ? 'text-total' : (line.values[index] ?? 0) < 0 ? 'text-destructive' : undefined
+const isResult = (line: DreLine) => line.kind === DreLineKind.Result
+const isTotal = (line: DreLine) => !line.parentId && line.kind !== DreLineKind.Balance && !isResult(line)
+const valueColor = (line: DreLine, index: number) => {
+  const negative = (line.values[index] ?? 0) < 0
+  if (isResult(line)) return negative ? 'text-result-loss' : undefined
+  if (negative) return 'text-destructive'
+  return isTotal(line) ? 'text-foreground' : undefined
+}
+const cellBackground = (line: DreLine, index: number) =>
+  props.highlight.includes(index) ? (isResult(line) ? 'bg-result-highlight' : 'bg-water-soft/70') : undefined
 
 const cell = (line: DreLine, index: number) => format(line, index, mode.value)
 const CELL_TEXT = 'inline-grid justify-items-end after:invisible after:content-[attr(data-alt)] after:[grid-area:1/1]'
@@ -99,16 +106,16 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
 
     <div ref="scroller" class="overflow-auto overscroll-contain" :class="fullscreen ? 'min-h-0 flex-1' : 'max-h-[70vh]'">
       <table class="min-w-full text-sm">
-        <thead class="sticky top-0 z-10 bg-muted text-left">
+        <thead class="sticky top-0 z-10 bg-muted text-left text-muted-foreground">
           <tr>
-            <th class="sticky left-0 z-10 min-w-64 bg-muted px-3 py-2 font-medium">Conta</th>
+            <th class="sticky left-0 z-10 min-w-64 bg-muted px-3 py-2.5 font-normal">Conta</th>
             <th
               v-for="i in shown"
               :key="i"
               data-period
               :data-highlight="highlight.includes(i) ? '' : undefined"
-              class="px-3 py-2 text-right figure font-medium whitespace-nowrap"
-              :class="highlight.includes(i) && 'bg-accent text-accent-foreground'"
+              class="px-3 py-2.5 text-right font-normal figure whitespace-nowrap"
+              :class="highlight.includes(i) && 'bg-water-soft text-foreground'"
             >
               {{ formatPeriod(report.periods[i]!) }}
             </th>
@@ -118,17 +125,20 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
           <tr
             v-for="line in rows"
             :key="line.id"
-            class="transition-colors duration-(--duration-fast) hover:bg-muted/50"
-            :class="{
-              'bg-muted/60 font-semibold': line.kind === DreLineKind.Result,
-              'font-medium': line.kind === DreLineKind.Section || line.kind === DreLineKind.Group,
-              'text-body': line.kind === DreLineKind.Account || line.kind === DreLineKind.Balance,
-            }"
+            class="transition-colors duration-(--duration-fast)"
+            :class="
+              isResult(line)
+                ? 'bg-result text-[0.9375rem] text-result-foreground'
+                : [
+                    'hover:bg-muted/60',
+                    isTotal(line) ? 'text-foreground' : 'text-body',
+                  ]
+            "
           >
             <th
               scope="row"
-              class="sticky left-0 bg-card px-3 py-1.5 text-left [font-weight:inherit] whitespace-nowrap"
-              :class="line.kind === DreLineKind.Result && 'bg-muted'"
+              class="sticky left-0 px-3 text-left [font-weight:inherit] whitespace-nowrap"
+              :class="isResult(line) ? 'bg-result py-2.5' : 'bg-card py-1.5'"
               :style="{ paddingLeft: `${0.75 + depth(line) * 1.25}rem` }"
             >
               <button
@@ -152,8 +162,8 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
             <td
               v-for="i in shown"
               :key="i"
-              class="px-3 py-1.5 text-right figure whitespace-nowrap"
-              :class="[highlight.includes(i) && 'bg-accent/40', valueColor(line, i)]"
+              class="px-3 text-right figure whitespace-nowrap"
+              :class="[isResult(line) ? 'py-2.5' : 'py-1.5', cellBackground(line, i), valueColor(line, i)]"
             >
               <button
                 v-if="(line.values[i] ?? 0) !== 0 && canInspect(line)"

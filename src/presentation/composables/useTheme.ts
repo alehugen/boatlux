@@ -10,7 +10,7 @@ export const ThemePreference = {
 export type ThemePreference = (typeof ThemePreference)[keyof typeof ThemePreference]
 
 const STORAGE_KEY = 'boatlux:theme'
-const DEFAULT_THEME: ThemePreference = ThemePreference.Dark
+const DEFAULT_THEME: ThemePreference = ThemePreference.Light
 
 const isThemePreference = (value: unknown): value is ThemePreference =>
   Object.values(ThemePreference).includes(value as ThemePreference)

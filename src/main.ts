@@ -12,4 +12,12 @@ app.use(pinia).use(router)
 
 useThemeStore(pinia)
 
-app.mount('#app')
+/** Monta o app quando a primeira rota já está pronta e só então some com a tela de carregamento. */
+void router.isReady().then(() => {
+  app.mount('#app')
+  const boot = document.getElementById('boot')
+  if (!boot) return
+  requestAnimationFrame(() => boot.classList.add('done'))
+  boot.addEventListener('transitionend', () => boot.remove(), { once: true })
+  setTimeout(() => boot.remove(), 1000)
+})

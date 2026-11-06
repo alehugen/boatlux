@@ -17,10 +17,6 @@ export const normalizeText = (value: string): string =>
     .trim()
     .toUpperCase()
 
-export const normalizeCode = (code: string): string => code.trim().replace(/^0+(?=\d)/, '')
-
-export const isTotalLabel = (text: string): boolean => /^(TOTAL|TOTAIS|SUBTOTAL)\b/.test(normalizeText(text))
-
 export type NumberConvention = 'br' | 'us'
 
 const AMBIGUOUS_NUMBER = /^-?[1-9]\d{0,2}[.,]\d{3}$/
@@ -96,54 +92,3 @@ export interface Period {
 export const periodKey = ({ year, month }: Period): string => `${year}-${String(month).padStart(2, '0')}`
 
 export const comparePeriods = (a: Period, b: Period): number => a.year - b.year || a.month - b.month
-
-export function compareByPeriod(a: { period: Period | null }, b: { period: Period | null }): number {
-  if (a.period && b.period) return comparePeriods(a.period, b.period)
-  if (a.period) return -1
-  if (b.period) return 1
-  return 0
-}
-
-const MONTH_PATTERNS = [
-  'JAN(?:EIRO)?',
-  'FEV(?:EREIRO)?',
-  'MAR(?:CO)?',
-  'ABR(?:IL)?',
-  'MAI(?:O)?',
-  'JUN(?:HO)?',
-  'JUL(?:HO)?',
-  'AGO(?:STO)?',
-  'SET(?:EMBRO)?',
-  'OUT(?:UBRO)?',
-  'NOV(?:EMBRO)?',
-  'DEZ(?:EMBRO)?',
-]
-
-const MONTH_NAME_REGEX = new RegExp(
-  `(?<![A-Z])(${MONTH_PATTERNS.map((p) => `(${p})`).join('|')})(?![A-Z])[\\s._\\-/]*(?:DE\\s+)?(\\d{4}|\\d{2})(?!\\d)`,
-)
-
-const toYear = (digits: string) => (digits.length === 2 ? 2000 + Number(digits) : Number(digits))
-const isValidMonth = (month: number) => month >= 1 && month <= 12
-
-export function parsePeriodFromText(text: string): Period | null {
-  const normalized = normalizeText(text)
-
-  const byName = normalized.match(MONTH_NAME_REGEX)
-  if (byName) {
-    const monthIndex = byName.slice(2, 14).findIndex(Boolean)
-    return { year: toYear(byName[14]!), month: monthIndex + 1 }
-  }
-
-  const monthFirst = normalized.match(/(?<!\d)(\d{1,2})[._\-/](\d{4})(?!\d)/)
-  if (monthFirst && isValidMonth(Number(monthFirst[1]))) {
-    return { year: Number(monthFirst[2]), month: Number(monthFirst[1]) }
-  }
-
-  const yearFirst = normalized.match(/(?<!\d)(\d{4})[._\-/](\d{1,2})(?!\d)/)
-  if (yearFirst && isValidMonth(Number(yearFirst[2]))) {
-    return { year: Number(yearFirst[1]), month: Number(yearFirst[2]) }
-  }
-
-  return null
-}

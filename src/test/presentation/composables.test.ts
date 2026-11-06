@@ -4,7 +4,16 @@ import { container } from '@/infrastructure/container'
 import { useDreAnalysis } from '@/presentation/composables/useDreAnalysis'
 import { useFileImport } from '@/presentation/composables/useFileImport'
 import { useReports } from '@/presentation/composables/useReports'
+import { useTweenedNumbers } from '@/presentation/composables/useTween'
 import { dreRows, xlsxFile } from '@/test/fixtures'
+import { createApp, defineComponent, nextTick, ref } from 'vue'
+
+/** Roda um composable dentro de um componente montado (para hooks de ciclo de vida). */
+function withSetup<T>(composable: () => T): T {
+  let result!: T
+  createApp(defineComponent({ setup: () => ((result = composable()), () => null) })).mount(document.createElement('div'))
+  return result
+}
 
 async function clearReports() {
   for (const report of await container.listReports.execute()) await container.removeReport.execute(report.id)
@@ -19,7 +28,7 @@ afterEach(() => vi.restoreAllMocks())
 
 describe('useFileImport', () => {
   it('importa vários arquivos, junta os erros e atualiza a lista de relatórios', async () => {
-    const { importFiles, errors, lastImported, isImporting } = useFileImport()
+    const { importFiles, errors, isImporting } = useFileImport()
     const imported = await importFiles([
       xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }),
       new File([], 'vazio.xlsx'),
@@ -27,7 +36,6 @@ describe('useFileImport', () => {
     ])
 
     expect(imported.map((report) => report.kind)).toEqual(['dre'])
-    expect(lastImported.value).toEqual(imported)
     expect(errors.value).toEqual(['O arquivo está vazio: vazio.xlsx', 'Formato não suportado: foto.png'])
     expect(isImporting.value).toBe(false)
     expect(useReports().reports.value).toHaveLength(1)
@@ -43,18 +51,12 @@ describe('useFileImport', () => {
     expect(useReports().reports.value).toHaveLength(1)
   })
 
-  it('mostra um erro quando os arquivos não puderam ser preparados', async () => {
-    const { importFiles, errors, isImporting } = useFileImport()
-    await importFiles(Promise.reject(new Error('falha ao gerar')))
-    expect(errors.value).toEqual(['falha ao gerar'])
-    expect(isImporting.value).toBe(false)
-  })
 
   it('compartilha o estado entre quem usa o composable', async () => {
     await useFileImport().importFiles([new File([], 'vazio.xlsx')])
     expect(useFileImport().errors.value).toHaveLength(1)
-    useFileImport().dismissSummary()
-    expect(useFileImport().lastImported.value).toEqual([])
+    useFileImport().clearErrors()
+    expect(useFileImport().errors.value).toEqual([])
   })
 })
 
@@ -87,5 +89,25 @@ describe('useDreAnalysis', () => {
     const { report, analysis } = useDreAnalysis('nao-existe')
     expect(report.value).toBeNull()
     expect(analysis.value).toBeNull()
+  })
+})
+
+describe('useTweenedNumbers', () => {
+  it('começa no valor atual e anima até o novo valor', async () => {
+    const source = ref([10, 20])
+    const tweened = withSetup(() => useTweenedNumbers(() => source.value, 50))
+    expect(tweened.value).toEqual([10, 20])
+
+    source.value = [110, 0]
+    await nextTick()
+    await vi.waitFor(() => expect(tweened.value).toEqual([110, 0]))
+  })
+
+  it('troca direto quando a quantidade de valores muda', async () => {
+    const source = ref([1])
+    const tweened = withSetup(() => useTweenedNumbers(() => source.value))
+    source.value = [1, 2]
+    await nextTick()
+    expect(tweened.value).toEqual([1, 2])
   })
 })
