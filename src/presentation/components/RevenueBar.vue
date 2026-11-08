@@ -77,7 +77,7 @@ const delayOf = (index: number, base = 0) => (staggered.value ? `${base + index 
 
 <template>
   <figure class="space-y-3">
-    <figcaption class="flex items-center gap-1 text-lg text-band-muted">
+    <figcaption class="flex items-start gap-1 text-lg text-band-muted" :class="inLoss && 'pb-5'">
       {{ title }}
       <InfoTip v-if="info" :text="info" on-band />
     </figcaption>

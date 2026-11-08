@@ -168,7 +168,7 @@ export function buildDreInsights(
   if (facts.topExpense) {
     items.push({
       title: 'Maior peso nos custos',
-      description: `${prettifyLabel(facts.topExpense.label)} consome ${formatPercent(facts.topExpense.share)} da receita.`,
+      description: `${prettifyLabel(facts.topExpense.label)}: ${formatPercent(facts.topExpense.share)} da receita${facts.topExpense.share > 1 ? ', mais do que tudo o que foi vendido' : ''}.`,
       tone: 'neutral',
       explanation: 'Entre os grupos de custos e despesas anteriores ao EBITDA, o de maior valor no período, dividido pela receita bruta.',
     })
@@ -213,10 +213,14 @@ export function buildDreInsights(
   }
 
   if (facts.averageContributionMargin !== null && months > 1) {
+    const per100 = Math.round(Math.abs(facts.averageContributionMargin) * 100)
+    const positive = facts.averageContributionMargin >= 0
     items.push({
       title: 'Margem de contribuição média',
-      description: `${formatPercent(facts.averageContributionMargin)} nos ${window}: de cada R$ 100 vendidos, sobram R$ ${Math.round(facts.averageContributionMargin * 100)} para pagar as despesas fixas.`,
-      tone: 'neutral',
+      description: positive
+        ? `${formatPercent(facts.averageContributionMargin)} nos ${window}: de cada R$ 100 vendidos, sobram R$ ${per100} para pagar as despesas fixas.`
+        : `${formatPercent(facts.averageContributionMargin)} nos ${window}: de cada R$ 100 vendidos, os custos variáveis passam R$ ${per100} da receita e não sobra nada para as despesas fixas.`,
+      tone: positive ? 'neutral' : 'negative',
       explanation: `Soma da margem de contribuição ÷ soma da receita bruta dos ${window}. Meses que vendem mais pesam mais na média.`,
     })
   }

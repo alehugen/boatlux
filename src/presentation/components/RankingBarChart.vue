@@ -4,7 +4,8 @@ import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
-import { computed } from 'vue'
+import { useElementSize } from '@vueuse/core'
+import { computed, useTemplateRef } from 'vue'
 import VChart from 'vue-echarts'
 import ChartEmpty from './ChartEmpty.vue'
 import { useChartTheme } from '@/presentation/composables/useChartTheme'
@@ -30,6 +31,9 @@ const props = withDefaults(
 )
 
 const theme = useChartTheme()
+const box = useTemplateRef('box')
+const { width } = useElementSize(box)
+const labelWidth = computed(() => Math.round(Math.min(160, Math.max(80, width.value * 0.4))))
 
 const BAR_HEIGHT = 30
 const height = computed(() => `${props.items.length * BAR_HEIGHT + 40}px`)
@@ -54,7 +58,8 @@ const option = computed<EChartsOption>(() => {
     },
     xAxis: {
       type: 'value',
-      axisLabel: { color: chrome.textMuted, formatter: (value: number) => props.formatAxis(value) },
+      splitNumber: 3,
+      axisLabel: { color: chrome.textMuted, hideOverlap: true, formatter: (value: number) => props.formatAxis(value) },
       splitLine: { lineStyle: { color: chrome.grid } },
     },
     yAxis: {
@@ -63,7 +68,7 @@ const option = computed<EChartsOption>(() => {
       data: props.items.map((item) => item.label),
       axisTick: { show: false },
       axisLine: { lineStyle: { color: chrome.axis } },
-      axisLabel: { color: chrome.textMuted, width: 180, overflow: 'truncate' },
+      axisLabel: { color: chrome.textMuted, width: labelWidth.value, overflow: 'truncate' },
     },
     series: [
       {
@@ -83,5 +88,7 @@ const option = computed<EChartsOption>(() => {
 
 <template>
   <ChartEmpty v-if="!items.length" />
-  <VChart v-else :option="option" :style="{ height }" autoresize />
+  <div v-else ref="box">
+    <VChart :option="option" :style="{ height }" autoresize />
+  </div>
 </template>

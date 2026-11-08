@@ -32,7 +32,7 @@ const bank = computed({
 })
 
 const TRIGGER =
-  'border-band-border bg-transparent text-band-foreground transition-colors duration-(--duration-fast) hover:border-band-muted hover:bg-white/5 data-[size=default]:h-10 dark:bg-transparent dark:hover:bg-white/5 [&_svg]:text-band-muted disabled:opacity-60'
+  '*:data-[slot=select-value]:block *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate border-band-border bg-transparent text-band-foreground transition-colors duration-(--duration-fast) hover:border-band-muted hover:bg-white/5 data-[size=default]:h-10 dark:bg-transparent dark:hover:bg-white/5 [&_svg]:text-band-muted disabled:opacity-60'
 </script>
 
 <template>
@@ -55,7 +55,7 @@ const TRIGGER =
       <Select v-model="bank" :disabled="isAccrual">
         <SelectTrigger
           :aria-labelledby="bankId"
-          :class="[TRIGGER, compact ? 'w-44 data-[size=default]:h-9 *:data-[slot=select-value]:truncate' : 'w-56']"
+          :class="[TRIGGER, compact ? 'w-44 data-[size=default]:h-9' : 'w-56']"
           :title="isAccrual ? 'Na competência, a DRE soma todas as contas, como na planilha.' : undefined"
         >
           <PhBank aria-hidden="true" />

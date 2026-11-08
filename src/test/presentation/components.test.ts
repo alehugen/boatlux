@@ -19,6 +19,8 @@ import ProfitTarget from '@/presentation/components/ProfitTarget.vue'
 import SegmentedControl from '@/presentation/components/SegmentedControl.vue'
 import StatCard from '@/presentation/components/StatCard.vue'
 import ThemeToggle from '@/presentation/components/ThemeToggle.vue'
+import TrendChart from '@/presentation/components/TrendChart.vue'
+import VChart from 'vue-echarts'
 import { useTheme } from '@/presentation/composables/useTheme'
 import { LEDGER_ROWS, dreRows } from '@/test/fixtures'
 import { mountWithProviders } from './mountWithProviders'
@@ -756,5 +758,42 @@ describe('SectionNav', () => {
     expect(wrapper.findAll('a')[1]!.attributes('aria-current')).toBe('location')
     wrapper.unmount()
     host.remove()
+  })
+})
+
+describe('TrendChart', () => {
+  const series = [
+    { name: 'Receita', type: 'bar' as const, data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+    { name: 'Custos', type: 'bar' as const, data: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1] },
+  ]
+  const categories = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out']
+  const mountChart = () =>
+    mountWithProviders(TrendChart, { props: { categories, series, highlightIndex: 4 }, global: { stubs: { echarts: true } } })
+  const option = (wrapper: ReturnType<typeof mountChart>) => wrapper.findComponent(VChart).props('option') as {
+    legend: { selected: Record<string, boolean> }
+    xAxis: { axisLabel: { interval: (index: number) => boolean } }
+  }
+
+  it('mostra a legenda fora do gráfico e esconde ou mostra a série ao clicar, sem esconder todas', async () => {
+    const wrapper = mountChart()
+    const buttons = () => wrapper.findAll('[aria-label="Séries do gráfico"] button')
+    expect(buttons().map((b) => b.text())).toEqual(['Receita', 'Custos'])
+
+    await buttons()[0]!.trigger('click')
+    expect(option(wrapper).legend.selected).toEqual({ Receita: false, Custos: true })
+    expect(buttons()[0]!.attributes('aria-pressed')).toBe('false')
+
+    await buttons()[1]!.trigger('click')
+    expect(option(wrapper).legend.selected).toEqual({ Receita: false, Custos: true })
+
+    await buttons()[0]!.trigger('click')
+    expect(option(wrapper).legend.selected).toEqual({ Receita: true, Custos: true })
+  })
+
+  it('sem largura medida, mostra poucos meses, mas sempre o selecionado', () => {
+    const interval = option(mountChart()).xAxis.axisLabel.interval
+    const shown = categories.map((_, i) => i).filter((i) => interval(i))
+    expect(shown).toContain(4)
+    expect(shown.length).toBeLessThan(categories.length)
   })
 })

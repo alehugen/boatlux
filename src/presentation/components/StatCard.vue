@@ -40,12 +40,12 @@ const TONE_CLASSES = {
 </script>
 
 <template>
-  <div class="surface flex min-w-0 flex-col p-5">
+  <div class="surface @container flex min-w-0 flex-col p-5">
     <div class="flex min-h-10 items-start justify-between gap-2">
       <p class="text-sm leading-snug text-muted-foreground">{{ label }}</p>
       <InfoTip v-if="info" :text="info" class="-mt-1 -mr-2 shrink-0" />
     </div>
-    <p class="mt-1 text-[1.75rem] leading-tight whitespace-nowrap figure" :class="negative ? 'text-destructive' : 'text-foreground'">
+    <p class="mt-1 text-[clamp(1.25rem,14cqi,1.75rem)] leading-tight whitespace-nowrap figure" :class="negative ? 'text-destructive' : 'text-foreground'">
       {{ value }}
     </p>
     <p v-if="hint" class="mt-1 text-sm text-body">{{ hint }}</p>

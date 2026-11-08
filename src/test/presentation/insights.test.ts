@@ -42,3 +42,23 @@ describe('buildDreInsights', () => {
   })
 })
 
+
+describe('textos com números fora do comum', () => {
+  const report = DreReport.fromTable({ sheet: 'DRE Geral', rows: dreRows() })!
+  const base = new AnalyzeDreUseCase().execute(report, { type: 'year', year: 2026 })
+  const labels = { previous: '', window: 'de 2026', when: 'no acumulado de 2026' }
+  const describe_ = (facts: Partial<typeof base.facts>, title: string) =>
+    buildDreInsights(report, { ...base, facts: { ...base.facts, ...facts } }, labels).find((i) => i.title === title)!
+
+  it('com margem de contribuição negativa, não fala em "sobram R$ -27"', () => {
+    const insight = describe_({ averageContributionMargin: -0.268 }, 'Margem de contribuição média')
+    expect(insight.description).toContain('os custos variáveis passam R$ 27 da receita')
+    expect(insight.description).not.toContain('sobram')
+    expect(insight.tone).toBe('negative')
+  })
+
+  it('aponta quando um grupo de despesas passa da receita', () => {
+    const insight = describe_({ topExpense: { label: 'DESPESAS GERAIS', value: 400, share: 3.968 } }, 'Maior peso nos custos')
+    expect(insight.description).toBe('Despesas gerais: 396,8% da receita, mais do que tudo o que foi vendido.')
+  })
+})

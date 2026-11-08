@@ -80,10 +80,16 @@ const CELL_TEXT = 'inline-grid justify-items-end after:invisible after:content-[
 const otherMode = computed<Mode>(() => (mode.value === 'value' ? 'av' : 'value'))
 
 const scroller = useTemplateRef('scroller')
+/** Com a tabela rolada para o lado, a coluna "Conta" ganha uma sombra: os meses passam por baixo dela. */
+const scrolledX = ref(false)
+const onScroll = () => (scrolledX.value = (scroller.value?.scrollLeft ?? 0) > 0)
+const STICKY_EDGE =
+  "after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-3 after:translate-x-full after:bg-linear-to-r after:from-black/12 after:to-transparent after:opacity-0 after:transition-opacity after:content-['']"
 const scrollToHighlight = () => {
   const el = scroller.value
   const column = el?.querySelector<HTMLElement>('[data-highlight]')
   if (el && column) el.scrollLeft = column.offsetLeft - el.clientWidth / 2
+  onScroll()
 }
 onMounted(scrollToHighlight)
 watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
@@ -106,7 +112,12 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
       </div>
     </div>
 
-    <div ref="scroller" class="overflow-auto overscroll-contain" :class="fullscreen ? 'min-h-0 flex-1' : 'max-h-[70vh]'">
+    <div
+      ref="scroller"
+      class="overflow-auto overscroll-contain"
+      :class="fullscreen ? 'min-h-0 flex-1' : 'max-h-[70vh]'"
+      @scroll.passive="onScroll"
+    >
       <table class="text-sm" :class="compact ? 'mx-auto w-auto' : 'min-w-full'">
         <thead
           class="sticky top-0 z-10 text-left text-muted-foreground"
@@ -115,7 +126,11 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
           <tr>
             <th
               class="sticky left-0 z-10 px-3 py-2.5 font-normal"
-              :class="compact ? 'min-w-80 bg-card shadow-[inset_0_-1px_0_var(--border)]' : 'min-w-64 bg-muted'"
+              :class="[
+                compact ? 'min-w-44 bg-card shadow-[inset_0_-1px_0_var(--border)] sm:min-w-80' : 'min-w-44 bg-muted sm:min-w-64',
+                STICKY_EDGE,
+                scrolledX && 'after:opacity-100',
+              ]"
             >
               Conta
             </th>
@@ -147,14 +162,14 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
           >
             <th
               scope="row"
-              class="sticky left-0 px-3 text-left [font-weight:inherit] whitespace-nowrap"
-              :class="isResult(line) ? 'bg-result py-2.5' : 'bg-card py-1.5'"
+              class="sticky left-0 z-[1] px-3 text-left [font-weight:inherit] sm:whitespace-nowrap"
+              :class="[isResult(line) ? 'bg-result py-2.5' : 'bg-card py-1.5', STICKY_EDGE, scrolledX && 'after:opacity-100']"
               :style="{ paddingLeft: `${0.75 + depth(line) * 1.25}rem` }"
             >
               <button
                 v-if="hasChildren(line)"
                 type="button"
-                class="-ml-1 inline-flex items-center gap-1.5 rounded px-1 hover:underline"
+                class="-ml-1 inline-flex items-center gap-1.5 rounded px-1 text-left hover:underline"
                 :aria-expanded="expanded.has(line.id)"
                 @click="toggle(line)"
               >

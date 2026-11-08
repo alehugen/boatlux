@@ -351,25 +351,6 @@
   transform: translateY(-100%);
 }
 
-.list-move,
-.list-enter-active,
-.list-leave-active {
-  transition:
-    opacity var(--duration-base) var(--ease-out),
-    transform var(--duration-base) var(--ease-out);
-}
-
-.list-enter-from,
-.list-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-
-.list-leave-active {
-  position: absolute;
-  inset-inline: 0;
-}
-
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity var(--duration-base) var(--ease-out);

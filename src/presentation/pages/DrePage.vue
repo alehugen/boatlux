@@ -196,7 +196,7 @@ const expenseItems = computed(() =>
         class="fixed inset-x-0 top-18 z-(--layer-nav) border-t border-band-border/60 bg-band text-band-foreground shadow-floating"
       >
         <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
-          <p class="hidden min-w-0 items-center gap-3 md:flex">
+          <p class="hidden min-w-0 items-center gap-3 lg:flex">
             <span class="truncate">{{ periodLabels.heading }}</span>
             <span v-if="headline" class="hidden items-center gap-2 text-band-muted xl:inline-flex">
               <span class="figure text-band-foreground">{{ headline.value }}</span>
@@ -204,15 +204,15 @@ const expenseItems = computed(() =>
             </span>
           </p>
           <!-- Os mesmos filtros do topo: regime, conta e período continuam à mão ao rolar. -->
-          <div class="-mx-4 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:flex-none md:overflow-visible md:px-0">
-            <BasisSelect v-if="report.canChangeBasis" :basis="basis" :banks="report.banks" compact @change="setBasis" />
-            <PeriodSelect v-model="selectedKey" :groups="periodGroups" compact />
+          <div class="-mx-4 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:flex-none lg:overflow-visible lg:px-0">
+            <PeriodSelect v-model="selectedKey" :groups="periodGroups" compact class="shrink-0" />
+            <BasisSelect v-if="report.canChangeBasis" :basis="basis" :banks="report.banks" compact class="shrink-0" @change="setBasis" />
           </div>
         </div>
       </div>
     </Transition>
 
-    <div class="page-fade mx-auto grid max-w-7xl gap-x-10 gap-y-6 px-4 py-12 sm:px-8 lg:grid-cols-[11rem_minmax(0,1fr)]">
+    <div class="page-fade mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-6 px-4 py-12 sm:px-8 lg:grid-cols-[11rem_minmax(0,1fr)]">
       <SectionNav :sections="navSections" />
 
       <div class="min-w-0 space-y-14">
@@ -227,7 +227,7 @@ const expenseItems = computed(() =>
 
       <PageSection id="indicadores" class="space-y-5">
         <SectionHeading title="Indicadores" :subtitle="periodLabels.heading" />
-        <StatGrid columns="grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+        <StatGrid columns="grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3">
           <StatCard
             v-for="kpi in kpiCards"
             :key="kpi.key"
@@ -263,7 +263,7 @@ const expenseItems = computed(() =>
         />
       </PageSection>
 
-      <PageSection id="custos" class="grid gap-5 xl:grid-cols-2">
+      <PageSection id="custos" class="grid items-start gap-5 xl:grid-cols-2">
         <ChartCard
           title="Para onde vai a receita"
           :subtitle="`Custos e despesas operacionais: ${periodLabels.currentLong}`"
