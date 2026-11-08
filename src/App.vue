@@ -4,13 +4,13 @@ import AppFooter from '@/presentation/components/AppFooter.vue'
 import LoaderTrack from '@/presentation/components/LoaderTrack.vue'
 import ThemeToggle from '@/presentation/components/ThemeToggle.vue'
 import { TooltipProvider } from '@/presentation/components/ui/tooltip'
-import { useFileImport } from '@/presentation/composables/useFileImport'
+import { useReport } from '@/presentation/composables/useReport'
 import { finishPageLoading, pageEntering, pageLeaving, usePageLoading } from '@/presentation/composables/usePageLoading'
 import { useScrolled } from '@/presentation/composables/useScroll'
 
 const scrolled = useScrolled()
 const { swapping, busy } = usePageLoading()
-const { isImporting } = useFileImport()
+const { isImporting } = useReport()
 const working = computed(() => busy.value || isImporting.value)
 
 onMounted(finishPageLoading)

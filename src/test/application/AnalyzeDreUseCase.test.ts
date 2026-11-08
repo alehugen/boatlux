@@ -3,7 +3,7 @@ import { DreMetric, DreReport } from '@/domain/dre'
 import { DRE_LINES, LEDGER_ROWS, dreRows } from '@/test/fixtures'
 import { AnalyzeDreUseCase } from '@/application'
 
-const report = DreReport.fromTable({ name: 'DRE Geral', sheet: 'DRE Geral', rows: dreRows() })!
+const report = DreReport.fromTable({ sheet: 'DRE Geral', rows: dreRows() })!
 const useCase = new AnalyzeDreUseCase()
 const march = useCase.execute(report, { type: 'month', index: 2 })
 const year = useCase.execute(report, { type: 'year', year: 2026 })
@@ -90,7 +90,6 @@ describe('fatos', () => {
 
 describe('janela dos fatos', () => {
   const withDecember = DreReport.fromTable({
-    name: 'DRE',
     sheet: 'DRE Geral',
     rows: dreRows({ lines: DRE_LINES.map((line) => line && ([line[0], line[2]! * 5, ...line.slice(2)] as typeof line)) }),
   })!
@@ -113,10 +112,10 @@ describe('janela dos fatos', () => {
 })
 
 describe('composição de uma célula', () => {
-  const withLedger = DreReport.fromTables([
-    { name: 'DRE', sheet: 'DRE Geral', rows: dreRows() },
-    { name: 'Fluxo', sheet: 'Fluxo de Caixa', rows: LEDGER_ROWS },
-  ])!
+  const withLedger = DreReport.fromWorkbook([
+    { sheet: 'DRE Geral', rows: dreRows() },
+    { sheet: 'Fluxo de Caixa', rows: LEDGER_ROWS },
+  ], { name: 'DRE' })
   const lineId = (label: string) => withLedger.lines.find((line) => line.label === label)!.id
 
   it('lista os lançamentos da conta no mês e confere com a DRE', () => {
@@ -311,7 +310,7 @@ describe('para onde vai a receita', () => {
 
   it('não monta a divisão sem a linha do EBITDA', () => {
     const lines = DRE_LINES.filter((line) => line?.[0] !== 'RESULTADO LÍQUIDO (EBITDA)')
-    const withoutEbitda = DreReport.fromTable({ name: 'DRE', sheet: 'DRE Geral', rows: dreRows({ lines }) })!
+    const withoutEbitda = DreReport.fromTable({ sheet: 'DRE Geral', rows: dreRows({ lines }) })!
     expect(useCase.execute(withoutEbitda, { type: 'month', index: 2 }).revenueFlow).toBeNull()
   })
 })

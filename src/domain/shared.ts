@@ -1,6 +1,4 @@
-export type Identifier = string
 
-export const createIdentifier = (): Identifier => crypto.randomUUID()
 
 export class DomainError extends Error {
   constructor(message: string) {

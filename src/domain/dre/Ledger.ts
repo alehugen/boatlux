@@ -1,28 +1,44 @@
 import { findTableHeader, type RawTable } from '@/domain/ingestion'
 import { normalizeText, type Period } from '@/domain/shared'
 
+/** Um lançamento da aba "Fluxo de Caixa". */
 export interface LedgerEntry {
+  /** Data de pagamento (ISO), ou vazio se ainda não foi pago. */
   readonly date: string
+  /** Data de emissão (ISO), ou vazio. */
+  readonly issueDate: string
   readonly description: string
-  readonly classification: string
+  /** Coluna "Categoria": é por ela que a DRE soma os lançamentos. Vazia quando a classificação não está na aba Lista. */
+  readonly category: string
+  /** Coluna "Classificação C.A", de onde a planilha tira a categoria. */
+  readonly account: string
   readonly unit: string
+  readonly bank: string
   readonly value: number
-  readonly period: Period
+  /** Mês de caixa (mês e ano do pagamento). */
+  readonly cashPeriod: Period | null
+  /** Mês de competência (mês e ano da emissão). */
+  readonly accrualPeriod: Period | null
 }
 
 const COLUMN_ALIASES = {
-  classification: ['CLASSIFICACAO', 'PLANODECONTAS', 'CONTA'],
-  signedValue: ['VALORDEMOVIMENTO', 'VALORMOVIMENTO'],
-  value: ['VALOR', 'VALORPAGO', 'VALORTOTAL'],
-  movement: ['MOVIMENTACAO', 'TIPO', 'NATUREZA'],
-  paidAt: ['DATAPAGTO', 'DATAPAGAMENTO', 'DATADEPAGAMENTO', 'PAGAMENTO'],
-  cashMonth: ['MESCX', 'MESCAIXA'],
-  cashYear: ['ANOCX', 'ANOCAIXA'],
-  description: ['HISTORICO', 'DESCRICAO'],
-  unit: ['UNIDADE', 'BANCO'],
+  category: ['CATEGORIA'],
+  account: ['CLASSIFICACAOCA', 'CLASSIFICACAO'],
+  signedValue: ['VALORDEMOVIMENTO'],
+  value: ['VALOR'],
+  movement: ['MOVIMENTACAO'],
+  paidAt: ['DATAPAGTO', 'DATADEPAGAMENTO'],
+  issuedAt: ['DATADEEMISSAO'],
+  cashMonth: ['MESCX'],
+  cashYear: ['ANOCX'],
+  accrualMonth: ['MESCOMP'],
+  accrualYear: ['ANOCOMP'],
+  description: ['HISTORICO'],
+  unit: ['UNIDADE'],
+  bank: ['BANCO'],
 } as const
 
-const REQUIRED_COLUMNS = ['classification', 'value'] as const
+type Column = keyof typeof COLUMN_ALIASES
 
 const isMonth = (month: number) => Number.isInteger(month) && month >= 1 && month <= 12
 const isYear = (year: number) => Number.isInteger(year) && year >= 1900 && year <= 2999
@@ -43,40 +59,53 @@ function parseDate(text: string): { iso: string; period: Period } | null {
   return { iso: `${year}-${pad(month)}-${pad(day)}`, period: { year, month } }
 }
 
+/**
+ * Lê a aba "Fluxo de Caixa". Fica cada linha com valor e com data de pagamento ou de emissão,
+ * inclusive as sem categoria, para mostrar o que não entra na DRE.
+ */
 export function readLedger(table: RawTable): LedgerEntry[] | null {
-  const header = findTableHeader(table.rows, COLUMN_ALIASES, REQUIRED_COLUMNS)
-  if (!header || header.columns.paidAt === undefined) return null
-  const hasCashMonth = header.columns.cashMonth !== undefined && header.columns.cashYear !== undefined
+  const header = findTableHeader(table.rows, COLUMN_ALIASES, ['category', 'value', 'paidAt'])
+  if (!header) return null
+  const has = (...names: Column[]) => names.every((name) => header.columns[name] !== undefined)
 
+  /** "Valor de movimento" já vem com sinal; sem ela, a movimentação diz se é entrada ou saída. */
   const signed = (row: readonly string[]) => {
-    if (header.columns.signedValue !== undefined) return header.number(row, 'signedValue')
-    const value = Math.abs(header.number(row, 'value'))
+    if (has('signedValue')) return header.number(row, 'signedValue')
+    const value = header.number(row, 'value')
     const movement = normalizeText(header.text(row, 'movement'))
-    if (movement.startsWith('SAIDA') || movement.startsWith('DEBITO')) return -value
-    if (movement.startsWith('ENTRADA') || movement.startsWith('CREDITO')) return value
-    return header.number(row, 'value')
+    if (movement.startsWith('SAIDA')) return -Math.abs(value)
+    if (movement.startsWith('ENTRADA')) return Math.abs(value)
+    return value
   }
 
-  const cashPeriodOf = (row: readonly string[]): Period | null => {
-    if (!hasCashMonth) return null
-    const month = header.number(row, 'cashMonth')
-    const year = header.number(row, 'cashYear')
-    return isMonth(month) && isYear(year) ? { year, month } : null
+  /** Mês e ano das colunas da planilha ("Mês Cx.", "Mês Comp."); sem elas, o mês da data. */
+  const periodOf = (row: readonly string[], month: Column, year: Column, fallback: Period | null) => {
+    if (!has(month, year)) return fallback
+    const m = header.number(row, month)
+    const y = header.number(row, year)
+    return isMonth(m) && isYear(y) ? { year: y, month: m } : fallback
   }
 
   const entries = table.rows.slice(header.rowIndex + 1).flatMap((row): LedgerEntry[] => {
-    const classification = header.text(row, 'classification')
-    const paid = parseDate(header.text(row, 'paidAt'))
     const value = signed(row)
-    if (!classification || !paid || !value) return []
+    if (!value) return []
+    const paid = parseDate(header.text(row, 'paidAt'))
+    const issued = parseDate(header.text(row, 'issuedAt'))
+    const cashPeriod = paid ? periodOf(row, 'cashMonth', 'cashYear', paid.period) : null
+    const accrualPeriod = periodOf(row, 'accrualMonth', 'accrualYear', issued?.period ?? null)
+    if (!cashPeriod && !accrualPeriod) return []
     return [
       {
-        date: paid.iso,
+        date: paid?.iso ?? '',
+        issueDate: issued?.iso ?? '',
         description: header.text(row, 'description'),
-        classification,
+        category: header.text(row, 'category'),
+        account: header.text(row, 'account'),
         unit: header.text(row, 'unit'),
+        bank: header.text(row, 'bank'),
         value,
-        period: cashPeriodOf(row) ?? paid.period,
+        cashPeriod,
+        accrualPeriod,
       },
     ]
   })

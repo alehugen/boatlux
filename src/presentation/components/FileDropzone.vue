@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { MAX_FILE_SIZE_MB, SUPPORTED_EXTENSIONS } from '@/domain/ingestion'
 
 defineProps<{ disabled?: boolean }>()
-const emit = defineEmits<{ select: [files: File[]] }>()
+const emit = defineEmits<{ select: [file: File] }>()
 
 const dragDepth = ref(0)
 const isDragging = computed(() => dragDepth.value > 0)
@@ -13,13 +13,14 @@ const extensions = SUPPORTED_EXTENSIONS.join(' ou ')
 
 function onDrop(event: DragEvent) {
   dragDepth.value = 0
-  const files = event.dataTransfer?.files
-  if (files?.length) emit('select', [...files])
+  const file = event.dataTransfer?.files[0]
+  if (file) emit('select', file)
 }
 
 function onChange(event: Event) {
   const input = event.target as HTMLInputElement
-  if (input.files?.length) emit('select', [...input.files])
+  const file = input.files?.[0]
+  if (file) emit('select', file)
   input.value = ''
 }
 </script>
@@ -50,6 +51,6 @@ function onChange(event: Event) {
         Arquivos {{ extensions }}, até {{ MAX_FILE_SIZE_MB }} MB. A planilha não sai do seu computador.
       </span>
     </span>
-    <input type="file" class="sr-only" multiple :accept="accept" :disabled="disabled" @change="onChange" />
+    <input type="file" class="sr-only" :accept="accept" :disabled="disabled" @change="onChange" />
   </label>
 </template>

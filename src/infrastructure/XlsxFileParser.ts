@@ -1,42 +1,29 @@
-import { FileFormat, type FileParser, type RawTable, type SourceFile } from '@/domain/ingestion'
+import type { FileParser, RawTable, SourceFile } from '@/domain/ingestion'
 
+type WorkerReply = { tables: RawTable[] } | { error: true }
+
+/** Lê a planilha num Web Worker quando houver um; senão (testes, navegadores antigos), na própria página. */
 export class XlsxFileParser implements FileParser {
-  readonly format = FileFormat.Xlsx
+  private readonly createWorker: (() => Worker) | null
+
+  constructor(createWorker: (() => Worker) | null = null) {
+    this.createWorker = createWorker
+  }
 
   async parse(file: SourceFile): Promise<RawTable[]> {
-    const { read, utils } = await import('xlsx')
-    const workbook = read(await file.content.arrayBuffer(), { cellDates: true })
-    const hasMultipleSheets = workbook.SheetNames.length > 1
+    const content = await file.content.arrayBuffer()
+    if (!this.createWorker) return (await import('./readWorkbook')).readWorkbook(content)
 
-    return workbook.SheetNames.flatMap((sheetName) => {
-      const sheet = workbook.Sheets[sheetName]
-      if (!sheet) return []
-
-      const rows = utils
-        .sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: '', blankrows: true })
-        .map((row) => row.map(toCellText))
-
-      if (!rows.some((row) => row.some(Boolean))) return []
-      return [
-        {
-          name: hasMultipleSheets ? `${file.baseName} · ${sheetName.trim()}` : file.baseName,
-          sheet: sheetName,
-          rows,
-        },
-      ]
-    })
+    const worker = this.createWorker()
+    try {
+      return await new Promise<RawTable[]>((resolve, reject) => {
+        worker.onmessage = ({ data }: MessageEvent<WorkerReply>) =>
+          'tables' in data ? resolve(data.tables) : reject(new Error('Falha ao ler a planilha'))
+        worker.onerror = () => reject(new Error('Falha ao ler a planilha'))
+        worker.postMessage(content, [content])
+      })
+    } finally {
+      worker.terminate()
+    }
   }
-}
-
-const pad = (n: number) => String(n).padStart(2, '0')
-
-function toCellText(value: unknown): string {
-  if (value instanceof Date) return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
-  if (typeof value === 'number') return numberText(value)
-  return String(value ?? '').trim()
-}
-
-function numberText(value: number): string {
-  const text = String(value)
-  return /^-?\d{1,3}\.\d{3}$/.test(text) ? `${text}0` : text
 }

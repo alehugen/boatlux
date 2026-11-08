@@ -197,7 +197,7 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
     <AppModal
       v-model:open="open"
       :title="breakdown ? prettifyLabel(breakdown.label) : ''"
-      :subtitle="breakdown ? `${formatPeriodLong(breakdown.period)}, lançamentos pela data de pagamento` : ''"
+      :subtitle="breakdown ? `${formatPeriodLong(breakdown.period)}, ${breakdown.basis.regime === 'accrual' ? 'lançamentos pela competência (data de emissão)' : 'lançamentos pela data de pagamento'}${breakdown.basis.bank ? `, ${breakdown.basis.bank}` : ''}` : ''"
     >
       <CellBreakdown v-if="breakdown" :breakdown="breakdown" />
     </AppModal>

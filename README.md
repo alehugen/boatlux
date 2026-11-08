@@ -1,36 +1,38 @@
 # Boat Lux · DRE
 
-Painel da DRE gerencial da **Boat Lux**. Importe a planilha da DRE e veja indicadores, pontos de análise, meta de lucro, gráficos e a DRE completa.
+Painel do fechamento financeiro da **Boat Lux**. Importe a planilha de fechamento e veja a DRE recalculada por regime e conta, indicadores, pontos de análise, meta de lucro, gráficos, dívidas e estoque.
 
 Todo o processamento acontece **no navegador**, e nenhum dado é enviado para servidores.
 
-> Os dados ficam apenas na memória do navegador: ao recarregar a página, é preciso importar a planilha novamente.
+> A planilha fica só na memória do navegador: ao recarregar a página, é preciso importá-la de novo.
 
 ## Como usar
 
-1. Arraste a planilha da DRE (`.xlsx` ou `.xls`) para a página inicial.
-2. A DRE abre direto no último mês encerrado. As DREs importadas ficam listadas na página inicial.
+1. Arraste a planilha de fechamento (`.xlsx`) para a página inicial.
+2. A DRE abre no último mês encerrado, no regime e na conta que estavam escolhidos na planilha. Importar outra planilha substitui a anterior.
 
 ## Funcionalidades
 
-- Lê a DRE gerencial mensal e reconstrói a hierarquia de contas (seções, grupos, contas e linhas de resultado).
-- **Indicadores:** receita bruta, lucro bruto, margem de contribuição, EBITDA, resultado líquido e saldo de caixa, com margem e variação frente ao período anterior.
+- **Regime e conta:** como os seletores B1 e B2 da aba DRE Geral, a DRE pode ser vista em **Caixa** (por banco ou todas as contas) ou **Competência**. Os valores são recalculados no navegador a partir do fluxo de caixa, seguindo as fórmulas de cada mês da DRE.
+- **Indicadores:** receita bruta, lucro bruto, margem de contribuição, EBITDA, resultado líquido e saldo de caixa, com margem e variação frente ao período anterior. Na competência o saldo de caixa não aparece, porque o saldo inicial só existe no caixa.
 - **Só meses encerrados:** o mês atual, os seguintes e meses sem movimento ficam de fora.
+- **Lançamentos fora da DRE:** aviso com os lançamentos do período que a DRE deixa de fora, com o motivo: sem categoria (a classificação não está na aba Lista), categoria que não é conta da DRE ou, na competência, sem data de emissão.
+- **Continuidade do saldo:** aviso quando o saldo inicial de um mês não é o saldo final do mês anterior.
 - **Pontos de análise** em linguagem de negócio, incluindo o ponto de equilíbrio.
 - **Meta de lucro:** quanto faturar por mês para atingir um lucro escolhido, em slides.
-- **De cada R$ 100 vendidos:** no topo, a receita dividida entre impostos, custos, despesas e o que sobra (EBITDA); no prejuízo, mostra o quanto passou da receita.
-- **Barra de período fixa:** ao rolar a página, o período e o resultado continuam visíveis no topo, com o seletor à mão.
+- **De cada R$ 100 vendidos:** a receita dividida entre impostos, custos, despesas e o que sobra (EBITDA).
 - **Gráficos:** para onde vai a receita, composição da receita e saldo de caixa.
-- **DRE completa** com grupos recolhíveis, valores (R$) ou AV%, escolha dos meses e tela cheia.
-- **Composição de cada valor:** se a planilha tiver uma aba de fluxo de caixa, clicar em um valor abre os lançamentos que o compõem.
-- Filtro por mês ou acumulado do ano.
+- **DRE completa** com grupos recolhíveis, valores (R$) ou AV%, escolha dos meses e tela cheia. Clicar em um valor abre os lançamentos que o compõem.
+- **Dívidas e estoque:** saldo devedor, parcelas do mês e última parcela de cada dívida; cotas em estoque agrupadas por embarcação.
+- Filtro por mês ou acumulado do ano. A planilha é lida num Web Worker, sem travar a tela.
 
 ## Formato da planilha
 
-- Uma linha de meses (1 a 12) e, logo abaixo, a linha dos anos.
-- Com várias abas, é usada a que contém **"DRE Geral"** no nome.
-- É preciso existir a linha "Receita operacional bruta".
-- Os blocos são separados por linhas em branco: um bloco de uma linha é um **resultado**, um cabeçalho igual à soma das linhas abaixo é um **grupo**, e um cabeçalho seguido de outro título em maiúsculas é uma **seção**.
+- **DRE Geral** (obrigatória): linha dos meses (1 a 12) com a dos anos logo abaixo e a linha "Receita operacional bruta". Os blocos são separados por linhas em branco: um bloco de uma linha é um **resultado**, um cabeçalho igual à soma das linhas abaixo é um **grupo**, e um cabeçalho seguido de outro título em maiúsculas é uma **seção**. Meses repetidos (o segundo bloco, a partir da coluna AM) são ignorados.
+- As contas somam o fluxo de caixa com `SOMASES`/`SUMIFS` pela coluna **Categoria**, com a mesma regra do Excel: maiúsculas não importam, acentos e espaços sim. Totais e resultados seguem as fórmulas `SOMA`, `+` e `−` de cada mês. Uma célula com valor digitado mantém o valor da planilha em qualquer regime (a página avisa).
+- **Fluxo de Caixa**: colunas Categoria, Valor de movimento (ou Valor e Movimentação), Data pagto, Mês/Ano Cx., Data de emissão, Mês/Ano Comp., Banco, Classificação C.A, Histórico e Unidade.
+- **Dívidas**: aba com "Dívida" no nome, uma linha por dívida, a coluna "Saldo" e uma coluna por mês (`mm/aaaa`) com a parcela. A leitura para na linha "Total"; o total do app soma todas as dívidas.
+- **Estoque**: aba com "Estoque" no nome, com as colunas "Cotas disponíveis" e "Valor da cota". O código antes do traço agrupa as cotas por embarcação (J = jet ski, L = lancha).
 - Arquivos vazios ou acima de 25 MB são recusados.
 
 ## Começando
@@ -86,23 +88,24 @@ Os tokens ficam em `src/presentation/main.css` e seguem a identidade do site [bo
 
 ## Arquitetura
 
-Arquitetura limpa com DDD. A regra de dependência é **`presentation → application → domain`**. A camada `infrastructure` implementa as portas do domínio e só é conhecida pelo `container.ts`.
+Arquitetura limpa com DDD. A regra de dependência é **`presentation → application → domain`**. A camada `infrastructure` implementa a leitura do arquivo e só é conhecida pelo `container.ts`.
 
 ```
 src/
 ├── domain/                 # Regras de negócio puras (sem Vue nem bibliotecas)
 │   ├── shared.ts           # Period, parseNumber, ratio, relativeChange...
-│   ├── report.ts           # Report, ReportRepository, recognizeReports
-│   ├── ingestion/          # SourceFile, FileFormat, porta FileParser, leitura de cabeçalhos
-│   ├── dre/                # DreReport (hierarquia da DRE) e Ledger (fluxo de caixa)
+│   ├── ingestion/          # SourceFile, RawTable, porta FileParser, leitura de cabeçalhos
+│   ├── dre/                # DreReport (DRE recalculada), DreBasis (regime e conta), DreFormula, Ledger (fluxo de caixa)
+│   ├── debts/              # Cronograma e situação das dívidas
+│   ├── stock/              # Cotas em estoque
 │   └── analysis/           # Insight (pontos de análise)
-├── application/            # Casos de uso: importar, listar/remover e analisar a DRE
-├── infrastructure/         # Leitor XLSX, repositório em memória
+├── application/            # Casos de uso: importar a planilha e analisar a DRE
+├── infrastructure/         # Leitura do XLSX (Web Worker com fallback)
 │   └── container.ts        # Composition root (injeção de dependências)
 ├── presentation/           # Vue
-│   ├── components/         # Gráficos, cards e tabelas
+│   ├── components/         # Gráficos, cards, avisos e tabelas
 │   │   └── ui/             # Componentes do shadcn-vue
-│   ├── composables/        # useReports, useFileImport, useDreAnalysis...
+│   ├── composables/        # useReport (planilha aberta), useDreAnalysis...
 │   ├── pages/              # Início (importação), DRE e página não encontrada
 │   ├── router.ts
 │   ├── format.ts           # Formatadores pt-BR

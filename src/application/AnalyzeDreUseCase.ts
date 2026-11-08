@@ -1,5 +1,15 @@
-import { DreLineKind, DreMetric, type DreLine, type DreReport, type LedgerEntry } from '@/domain/dre'
-import { normalizeText, ratio, relativeChange, sum, type Period } from '@/domain/shared'
+import {
+  categoryKey,
+  DreLineKind,
+  DreMetric,
+  DreRegime,
+  type DreBasis,
+  type DreLine,
+  type DreReport,
+  type LedgerEntry,
+  type OutsideGroup,
+} from '@/domain/dre'
+import { comparePeriods, normalizeText, ratio, relativeChange, sum, type Period } from '@/domain/shared'
 
 export type DreSelection = { type: 'month'; index: number } | { type: 'year'; year: number }
 
@@ -84,6 +94,7 @@ export type ProfitTargetProjection =
 export interface CellBreakdown {
   readonly label: string
   readonly period: Period
+  readonly basis: DreBasis
   readonly value: number
   readonly entries: readonly LedgerEntry[]
   readonly total: number
@@ -109,6 +120,13 @@ export interface RevenueFlow {
   readonly resultShare: number
 }
 
+/** Mês em que o saldo inicial não é o saldo final do mês anterior. */
+export interface CashBreak {
+  readonly period: Period
+  readonly previous: Period
+  readonly difference: number
+}
+
 export interface DreAnalysis {
   readonly indexes: number[]
   readonly previousIndexes: number[] | null
@@ -125,6 +143,10 @@ export interface DreAnalysis {
     readonly revenueMix: { readonly label: string; readonly values: number[] }[]
   }
   readonly facts: DreFacts
+  /** Quebras na sequência do saldo de caixa (só no regime de caixa). */
+  readonly cashBreaks: readonly CashBreak[]
+  /** Lançamentos do período que não entram na DRE. */
+  readonly outside: readonly OutsideGroup[]
 }
 
 export interface DreFacts {
@@ -150,6 +172,8 @@ const WITHOUT_MARGIN: DreMetric[] = [DreMetric.GrossRevenue, DreMetric.EndingCas
 
 const RECENT_WINDOW = 12
 
+const nextMonth = ({ year, month }: Period): Period => (month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 })
+
 export class AnalyzeDreUseCase {
   selections(report: DreReport): DreSelection[] {
     const months = report.periods.map((_, index): DreSelection => ({ type: 'month', index }))
@@ -166,7 +190,8 @@ export class AnalyzeDreUseCase {
     const monthlyOf = (metric: DreMetric) => (report.metric(metric) ? allIndexes.map((i) => value(metric, [i])) : null)
 
     const revenue = value(DreMetric.GrossRevenue)
-    const kpis = KPI_METRICS.filter((metric) => report.metric(metric)).map((metric) => ({
+    const shows = (metric: DreMetric) => !!report.metric(metric) && (metric !== DreMetric.EndingCash || report.hasCashBalance)
+    const kpis = KPI_METRICS.filter(shows).map((metric) => ({
       metric,
       value: value(metric),
       previous: previousIndexes ? value(metric, previousIndexes) : null,
@@ -177,7 +202,7 @@ export class AnalyzeDreUseCase {
     const monthly = {
       revenue: monthlyRevenue,
       ebitda: monthlyOf(DreMetric.Ebitda),
-      cash: monthlyOf(DreMetric.EndingCash),
+      cash: report.hasCashBalance ? monthlyOf(DreMetric.EndingCash) : null,
       revenueMix: this.revenueMix(report),
     }
 
@@ -200,7 +225,22 @@ export class AnalyzeDreUseCase {
         topExpense: expenses[0] ?? null,
         ...this.trendFacts(report, monthly, this.windowOf(selection, indexes)),
       },
+      cashBreaks: this.cashBreaks(report),
+      outside: report.outsideEntries(indexes),
     }
+  }
+
+  /** Meses seguidos em que o saldo inicial não bate com o saldo final do mês anterior (diferença acima de R$ 1). */
+  private cashBreaks(report: DreReport): CashBreak[] {
+    const opening = report.metric(DreMetric.OpeningCash)
+    const ending = report.metric(DreMetric.EndingCash)
+    if (!report.hasCashBalance || !opening || !ending) return []
+    return report.periods.flatMap((period, i): CashBreak[] => {
+      const previous = report.periods[i - 1]
+      if (!previous || comparePeriods(period, nextMonth(previous)) !== 0) return []
+      const difference = Math.round(((opening.values[i] ?? 0) - (ending.values[i - 1] ?? 0)) * 100) / 100
+      return Math.abs(difference) >= 1 ? [{ period, previous, difference }] : []
+    })
   }
 
   breakdown(report: DreReport, lineId: string, periodIndex: number): CellBreakdown | null {
@@ -208,19 +248,20 @@ export class AnalyzeDreUseCase {
     const period = report.periods[periodIndex]
     if (!line || !period || !report.isTraceable(line)) return null
 
-    const entries = [...report.entriesOf(line, periodIndex)].sort((a, b) => a.date.localeCompare(b.date))
+    const dateOf = (entry: LedgerEntry) => (report.basis.regime === DreRegime.Accrual ? entry.issueDate : entry.date)
+    const entries = [...report.entriesOf(line, periodIndex)].sort((a, b) => dateOf(a).localeCompare(dateOf(b)))
     const total = sum(entries.map((entry) => entry.value))
     const value = line.values[periodIndex] ?? 0
     const accounts = report
       .accountsOf(line)
       .map((account) => {
-        const own = entries.filter((entry) => normalizeText(entry.classification) === normalizeText(account.label))
+        const own = entries.filter((entry) => categoryKey(entry.category) === categoryKey(account.label))
         return { label: account.label, total: sum(own.map((entry) => entry.value)), count: own.length }
       })
       .filter((account) => account.count > 0)
       .sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
 
-    return { label: line.label, period, value, entries, total, difference: value - total, accounts }
+    return { label: line.label, period, basis: report.basis, value, entries, total, difference: value - total, accounts }
   }
 
   projectProfitTarget(base: ProfitTargetBase, target: number): ProfitTargetProjection {

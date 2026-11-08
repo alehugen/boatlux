@@ -3,7 +3,6 @@ import type { Period } from '@/domain/shared'
 const LOCALE = 'pt-BR'
 
 const numberFormatter = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 2 })
-const wholeFormatter = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 })
 const compactFormatter = new Intl.NumberFormat(LOCALE, { notation: 'compact', maximumFractionDigits: 1 })
 const currencyFormatter = new Intl.NumberFormat(LOCALE, { style: 'currency', currency: 'BRL' })
 const currencyCompactFormatter = new Intl.NumberFormat(LOCALE, {
@@ -18,7 +17,6 @@ const pointsFormatter = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 1
 const monthLongFormatter = new Intl.DateTimeFormat(LOCALE, { month: 'long', year: 'numeric' })
 
 export const formatNumber = (value: number) => numberFormatter.format(value)
-export const formatNumberWhole = (value: number) => wholeFormatter.format(value)
 export const formatCompact = (value: number) => compactFormatter.format(value)
 export const formatCurrency = (value: number) => currencyFormatter.format(value)
 export const formatCurrencyWhole = (value: number) => currencyWholeFormatter.format(value)

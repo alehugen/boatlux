@@ -1,16 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { InMemoryReportRepository } from '@/infrastructure/InMemoryReportRepository'
-import { XlsxFileParser } from '@/infrastructure/XlsxFileParser'
-import { dreRows, xlsxFile } from '@/test/fixtures'
+import { describe, expect, it } from 'vitest'
 import { ImportFileUseCase } from '@/application'
+import { XlsxFileParser } from '@/infrastructure/XlsxFileParser'
+import { boatluxFile, dreRows, xlsxFile } from '@/test/fixtures'
 
-let repository: InMemoryReportRepository
-let importFile: ImportFileUseCase
-
-beforeEach(() => {
-  repository = new InMemoryReportRepository()
-  importFile = new ImportFileUseCase([new XlsxFileParser()], repository)
-})
+const importFile = new ImportFileUseCase(new XlsxFileParser(), () => new Date(2026, 10, 7))
 
 const errorOf = async (file: File) => {
   try {
@@ -22,22 +15,36 @@ const errorOf = async (file: File) => {
 }
 
 describe('ImportFileUseCase', () => {
-  it('importa a DRE de uma planilha com várias abas', async () => {
-    const file = xlsxFile('DRE.xlsx', { Fluxo: [['Data', 'Valor'], ['x', '1']], 'DFC  DRE Geral': dreRows() })
-    const reports = await importFile.execute(file)
-    expect(reports.map((r) => r.kind)).toEqual(['dre'])
-    expect(reports[0]!.periods).toHaveLength(3)
-    expect(await repository.findAll()).toHaveLength(1)
+  it('monta a DRE da planilha da Boat Lux, com o nome do arquivo', async () => {
+    const report = await importFile.execute(boatluxFile())
+    expect(report.name).toBe('Fechamento 2026')
+    expect(report.canChangeBasis).toBe(true)
+    expect(report.debts?.debts).toHaveLength(2)
+    expect(report.stock?.items).toHaveLength(5)
+  })
+
+  it('lê a aba "DRE Geral" mesmo com outras abas parecidas', async () => {
+    const other = dreRows({ lines: [['RECEITA OPERACIONAL BRUTA', 0, 1, 1, 1], ['Única', 0, 1, 1, 1]] })
+    const report = await importFile.execute(xlsxFile('DRE.xlsx', { 'DRE Unidades': other, 'DRE Geral': dreRows() }))
+    expect(report.metric('grossRevenue')?.values).toEqual([1000, 1200, 900])
   })
 
   it('explica falhas com mensagens legíveis', async () => {
     expect(await errorOf(new File([], 'vazio.xlsx'))).toBe('O arquivo está vazio: vazio.xlsx')
-    expect(await errorOf(new File(['a;b'], 'tabela.csv'))).toBe('Formato não suportado: tabela.csv')
-    expect(await errorOf(new File(['x'], 'foto.png'))).toBe('Formato não suportado: foto.png')
-    expect(await errorOf(xlsxFile('vendas.xlsx', { Jan: [['Item', 'Valor'], ['A', '1']] }))).toMatch(
-      /^Não encontramos uma DRE neste arquivo/,
+    expect(await errorOf(new File(['a;b'], 'tabela.csv'))).toMatch(/^Formato não suportado: tabela\.csv/)
+    expect(await errorOf(xlsxFile('vendas.xlsx', { Jan: [['Item', 'Valor'], ['A', '1']] }))).toBe(
+      'Não encontramos a aba "DRE Geral" nesta planilha.',
     )
+    expect(await errorOf(xlsxFile('dre.xlsx', { 'DRE Geral': [['Item', 'Valor'], ['A', '1']] }))).toMatch(/linha dos meses/)
+    expect(await errorOf(xlsxFile('vazia.xlsx', { Plan1: [['']] }))).toBe('O arquivo não contém dados.')
     const brokenZip = new File([new Uint8Array([0x50, 0x4b, 3, 4, ...Array<number>(200).fill(7)])], 'quebrado.xlsx')
     expect(await errorOf(brokenZip)).toMatch(/^Não foi possível ler quebrado\.xlsx/)
+  })
+
+  it('explica quando a DRE só tem meses em aberto', async () => {
+    const early = new ImportFileUseCase(new XlsxFileParser(), () => new Date(2026, 0, 20))
+    await expect(early.execute(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))).rejects.toThrow(
+      'A DRE só tem meses que ainda não terminaram.',
+    )
   })
 })

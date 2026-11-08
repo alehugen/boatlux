@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { PhArrowDownRight, PhArrowLeft, PhArrowUpRight } from '@phosphor-icons/vue'
+import { PhArrowDownRight, PhArrowLeft, PhArrowUpRight, PhWarning } from '@phosphor-icons/vue'
 import { computed, ref, useTemplateRef, watch } from 'vue'
-import { DreMetric } from '@/domain/dre'
+import { DreMetric, DreRegime } from '@/domain/dre'
 import { relativeChange } from '@/domain/shared'
+import BasisSelect from '@/presentation/components/BasisSelect.vue'
 import ChartCard from '@/presentation/components/ChartCard.vue'
+import DebtsCard from '@/presentation/components/DebtsCard.vue'
 import DreTable from '@/presentation/components/DreTable.vue'
+import OutsideEntries from '@/presentation/components/OutsideEntries.vue'
+import StockCard from '@/presentation/components/StockCard.vue'
 import InsightList from '@/presentation/components/InsightList.vue'
-import NotFound from '@/presentation/components/NotFound.vue'
 import PageBand from '@/presentation/components/PageBand.vue'
 import PageSection from '@/presentation/components/PageSection.vue'
 import PeriodSelect from '@/presentation/components/PeriodSelect.vue'
@@ -32,8 +35,14 @@ import {
   prettifyLabel,
 } from '@/presentation/format'
 
-const props = defineProps<{ id: string }>()
-const { report, selections, selectedKey, analysis, periodLabels, insights, profitTargetFor } = useDreAnalysis(() => props.id)
+const { report, basis, setBasis, selections, selectedKey, analysis, periodLabels, insights, profitTargetFor } = useDreAnalysis()
+
+/** Rótulo curto do regime, para a barra fixa e o subtítulo da página. */
+const basisLabel = computed(() => {
+  if (!report.value?.canChangeBasis) return ''
+  if (basis.value.regime === DreRegime.Accrual) return 'Competência'
+  return `Caixa, ${basis.value.bank ?? 'todas as contas'}`
+})
 
 const ALL_REVENUE = 'all'
 const revenueSource = ref(ALL_REVENUE)
@@ -95,7 +104,7 @@ const INFO = {
   expenses:
     'Grupos de custos e despesas anteriores ao EBITDA no período selecionado, do maior para o menor. O tooltip mostra quanto cada um consome da receita bruta.',
   mix: 'Contas que formam a receita bruta, empilhadas mês a mês. Só aparecem as contas com movimento.',
-  cash: 'Saldo final de caixa informado na DRE para cada mês (saldo inicial + variação).',
+  cash: 'Saldo final de caixa da DRE em cada mês (saldo inicial + variação). Os avisos abaixo do gráfico apontam meses em que o saldo inicial não continua o saldo final do mês anterior, sinal de lançamento faltando ou fora da DRE. Na competência o saldo não aparece, porque o saldo inicial só existe no caixa.',
   target:
     'Receita necessária = (despesas operacionais + lucro desejado) ÷ margem de contribuição %. O lucro da meta é o resultado operacional: margem de contribuição − despesas operacionais. Outras receitas, depreciação e itens não operacionais ficam de fora. No acumulado do ano, receita e despesas são a média mensal.',
   insights: 'Frases geradas automaticamente a partir dos números. Passe o mouse no ícone de cada ponto para ver o cálculo.',
@@ -120,11 +129,7 @@ const expenseItems = computed(() =>
 </script>
 
 <template>
-  <div v-if="!report" class="page-fade mx-auto max-w-7xl px-4 py-10 sm:px-8">
-    <NotFound message="DRE não encontrada." />
-  </div>
-
-  <div v-else-if="analysis">
+  <div v-if="report && analysis">
     <PageBand>
       <RouterLink
         :to="{ name: 'import' }"
@@ -139,7 +144,10 @@ const expenseItems = computed(() =>
           <h1 class="text-[1.95rem] leading-tight">{{ periodLabels.heading }}</h1>
           <p class="mt-1 truncate text-sm text-band-muted">{{ report.name }}</p>
         </div>
-        <PeriodSelect v-model="selectedKey" :groups="periodGroups" />
+        <div class="flex flex-wrap items-end gap-3">
+          <BasisSelect v-if="report.canChangeBasis" :basis="basis" :banks="report.banks" @change="setBasis" />
+          <PeriodSelect v-model="selectedKey" :groups="periodGroups" />
+        </div>
       </div>
 
       <div v-if="headline" class="mt-9">
@@ -172,6 +180,7 @@ const expenseItems = computed(() =>
         <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
           <p class="flex min-w-0 items-center gap-3">
             <span class="truncate">{{ periodLabels.heading }}</span>
+            <span v-if="basisLabel" class="hidden truncate text-sm text-band-muted lg:inline">{{ basisLabel }}</span>
             <span v-if="headline" class="hidden items-center gap-2 text-band-muted sm:inline-flex">
               <span class="figure text-band-foreground">{{ headline.value }}</span>
               <ResultStamp :positive="headline.positive" size="sm" />
@@ -183,11 +192,14 @@ const expenseItems = computed(() =>
     </Transition>
 
     <div class="page-fade mx-auto max-w-7xl space-y-14 px-4 py-12 sm:px-8">
-      <p v-if="report.ignoredPeriods.length" class="surface border-l-4 border-l-primary px-4 py-3 text-sm text-body">
-        <span class="text-foreground">{{ formatPeriodList(report.ignoredPeriods) }}</span>
-        {{ report.ignoredPeriods.length === 1 ? 'não entra' : 'não entram' }} na análise: só contam os meses já encerrados.
-        Mês em andamento e projeções da planilha ficam de fora até o mês terminar.
-      </p>
+      <div v-if="report.ignoredPeriods.length || analysis.outside.length" class="space-y-3">
+        <p v-if="report.ignoredPeriods.length" class="surface border-l-4 border-l-primary px-4 py-3 text-sm text-body">
+          <span class="text-foreground">{{ formatPeriodList(report.ignoredPeriods) }}</span>
+          {{ report.ignoredPeriods.length === 1 ? 'não entra' : 'não entram' }} na análise: só contam os meses já encerrados.
+          Mês em andamento e projeções da planilha ficam de fora até o mês terminar.
+        </p>
+        <OutsideEntries :groups="analysis.outside" :when="periodLabels.when" />
+      </div>
 
       <PageSection id="indicadores" class="space-y-5">
         <SectionHeading title="Indicadores" :subtitle="periodLabels.heading" />
@@ -254,12 +266,34 @@ const expenseItems = computed(() =>
             :highlight-index="highlightIndex"
             :height="240"
           />
+          <ul v-if="analysis.cashBreaks.length" class="mt-4 space-y-1 border-t border-border pt-3 text-sm text-body">
+            <li v-for="item in analysis.cashBreaks" :key="formatPeriod(item.period)" class="flex gap-2">
+              <PhWarning :size="16" weight="fill" class="mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
+              <span>
+                O saldo inicial de {{ formatPeriod(item.period) }} está
+                <span class="figure">{{ formatCurrency(Math.abs(item.difference)) }}</span>
+                {{ item.difference > 0 ? 'acima' : 'abaixo' }} do saldo final de {{ formatPeriod(item.previous) }}.
+              </span>
+            </li>
+          </ul>
         </ChartCard>
       </PageSection>
 
       <PageSection id="dre-completa" class="space-y-5">
-        <SectionHeading title="DRE completa" />
+        <SectionHeading title="DRE completa" :subtitle="basisLabel || undefined" />
+        <p v-if="report.staticLines.length" class="surface border-l-4 border-l-primary px-4 py-3 text-sm text-body">
+          Valor digitado na planilha, que não muda com o regime nem com a conta:
+          <span class="text-foreground">{{ report.staticLines.map(prettifyLabel).join(', ') }}</span>.
+        </p>
         <DreTable :report="report" :highlight="analysis.indexes" />
+      </PageSection>
+
+      <PageSection v-if="report.debts || report.stock" id="dividas-estoque" class="space-y-5">
+        <SectionHeading title="Dívidas e estoque" subtitle="Posição atual, das abas de dívidas e de estoque da planilha" />
+        <div class="grid items-start gap-5 xl:grid-cols-2">
+          <DebtsCard v-if="report.debts" :schedule="report.debts" />
+          <StockCard v-if="report.stock" :stock="report.stock" />
+        </div>
       </PageSection>
     </div>
   </div>

@@ -2,12 +2,15 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { ProfitTargetBase } from '@/application'
-import { DreReport } from '@/domain/dre'
+import { DreReport, type LedgerEntry } from '@/domain/dre'
 import AppFooter from '@/presentation/components/AppFooter.vue'
+import BasisSelect from '@/presentation/components/BasisSelect.vue'
+import { Select } from '@/presentation/components/ui/select'
 import CellBreakdown from '@/presentation/components/CellBreakdown.vue'
 import DreTable from '@/presentation/components/DreTable.vue'
 import InfoTip from '@/presentation/components/InfoTip.vue'
 import InsightList from '@/presentation/components/InsightList.vue'
+import OutsideEntries from '@/presentation/components/OutsideEntries.vue'
 import LoaderTrack from '@/presentation/components/LoaderTrack.vue'
 import GoalStatement from '@/presentation/components/profit-target/GoalStatement.vue'
 import RevenueBar from '@/presentation/components/RevenueBar.vue'
@@ -323,7 +326,7 @@ describe('InsightList', () => {
 })
 
 describe('DreTable', () => {
-  const report = DreReport.fromTable({ name: 'DRE', sheet: 'DRE Geral', rows: dreRows() })!
+  const report = DreReport.fromTable({ sheet: 'DRE Geral', rows: dreRows() })!
   const mountTable = () => mountWithProviders(DreTable, { props: { report, highlight: [2] } })
   const rowLabels = (wrapper: ReturnType<typeof mountTable>) => wrapper.findAll('tbody th').map((th) => th.text())
 
@@ -424,10 +427,10 @@ describe('DreTable', () => {
   })
 
   it('abre os lançamentos que compõem um valor ao clicar', async () => {
-    const withLedger = DreReport.fromTables([
-      { name: 'DRE', sheet: 'DRE Geral', rows: dreRows() },
-      { name: 'Fluxo', sheet: 'Fluxo de Caixa', rows: LEDGER_ROWS },
-    ])!
+    const withLedger = DreReport.fromWorkbook([
+      { sheet: 'DRE Geral', rows: dreRows() },
+      { sheet: 'Fluxo de Caixa', rows: LEDGER_ROWS },
+    ], { name: 'DRE' })
     const wrapper = mountWithProviders(DreTable, { props: { report: withLedger, highlight: [2] } })
     const group = wrapper.findAll('tbody button').find((b) => b.text() === 'Despesas com pessoal')!
     await group.trigger('click')
@@ -451,10 +454,10 @@ describe('DreTable', () => {
   })
 
   it('abre em tela cheia e, dali, o detalhe de um valor fecha sem fechar a tabela', async () => {
-    const withLedger = DreReport.fromTables([
-      { name: 'DRE', sheet: 'DRE Geral', rows: dreRows() },
-      { name: 'Fluxo', sheet: 'Fluxo de Caixa', rows: LEDGER_ROWS },
-    ])!
+    const withLedger = DreReport.fromWorkbook([
+      { sheet: 'DRE Geral', rows: dreRows() },
+      { sheet: 'Fluxo de Caixa', rows: LEDGER_ROWS },
+    ], { name: 'DRE' })
     const host = document.body.appendChild(document.createElement('div'))
     const wrapper = mountWithProviders(DreTable, { props: { report: withLedger, highlight: [2] }, attachTo: host })
     const dialogs = () => [...document.body.querySelectorAll('[role="dialog"]')]
@@ -493,15 +496,29 @@ describe('DreTable', () => {
 })
 
 describe('CellBreakdown', () => {
+  const entry = (fields: Partial<LedgerEntry>): LedgerEntry => ({
+    date: '',
+    issueDate: '',
+    description: '',
+    category: '',
+    account: '',
+    unit: '',
+    bank: '',
+    value: 0,
+    cashPeriod: { year: 2026, month: 3 },
+    accrualPeriod: null,
+    ...fields,
+  })
   const breakdown = {
     label: 'DESPESAS OPERACIONAIS',
     period: { year: 2026, month: 3 },
+    basis: { regime: 'cash' as const, bank: null },
     value: -700,
     total: -600,
     difference: -100,
     entries: [
-      { date: '2026-03-05', description: 'Folha', classification: 'Salários', unit: 'Matriz', value: -350, period: { year: 2026, month: 3 } },
-      { date: '2026-03-10', description: '', classification: 'Aluguel', unit: '', value: -250, period: { year: 2026, month: 3 } },
+      entry({ date: '2026-03-05', description: 'Folha', category: 'Salários', unit: 'Matriz', value: -350 }),
+      entry({ date: '2026-03-10', issueDate: '2026-02-25', category: 'Aluguel', value: -250 }),
     ],
     accounts: [
       { label: 'Salários', total: -350, count: 1 },
@@ -532,9 +549,53 @@ describe('CellBreakdown', () => {
     expect(header().attributes('aria-sort')).toBe('none')
   })
 
+  it('na competência, mostra a data de emissão e o banco de cada lançamento', () => {
+    const accrual = {
+      ...breakdown,
+      basis: { regime: 'accrual' as const, bank: null },
+      entries: breakdown.entries.map((item, i) => ({ ...item, bank: i ? 'Sicredi' : '' })),
+    }
+    const wrapper = mount(CellBreakdown, { props: { breakdown: accrual } })
+    const headers = wrapper.findAll('thead th').map((th) => th.text())
+    expect(headers).toContain('Emissão')
+    expect(headers).toContain('Banco')
+    expect(wrapper.findAll('tbody tr')[1]!.text()).toMatch(/25\/02\/2026.*Sicredi/)
+    expect(wrapper.findAll('tbody tr')[0]!.text()).toMatch(/^–/)
+  })
+
   it('avisa quando não há lançamentos pagos no mês', () => {
     const wrapper = mount(CellBreakdown, { props: { breakdown: { ...breakdown, entries: [], accounts: [], total: 0 } } })
     expect(wrapper.text()).toContain('Nenhum lançamento desta conta foi pago neste mês')
+  })
+})
+
+describe('BasisSelect', () => {
+  const mountWith = (basis: { regime: 'cash' | 'accrual'; bank: string | null }) =>
+    mount(BasisSelect, { props: { basis, banks: ['01 - SANTANDER', '02 - SICREDI'] } })
+
+  it('troca o banco no regime de caixa e volta para todas as contas', () => {
+    const wrapper = mountWith({ regime: 'cash', bank: null })
+    const [, bank] = wrapper.findAllComponents(Select)
+    expect(bank!.props('modelValue')).toBe('*')
+    bank!.vm.$emit('update:modelValue', '02 - SICREDI')
+    bank!.vm.$emit('update:modelValue', '*')
+    expect(wrapper.emitted('change')).toEqual([[{ regime: 'cash', bank: '02 - SICREDI' }], [{ regime: 'cash', bank: null }]])
+  })
+
+  it('na competência, soma todas as contas e trava o banco', () => {
+    const wrapper = mountWith({ regime: 'cash', bank: '01 - SANTANDER' })
+    wrapper.findAllComponents(Select)[0]!.vm.$emit('update:modelValue', 'accrual')
+    expect(wrapper.emitted('change')).toEqual([[{ regime: 'accrual', bank: null }]])
+
+    const accrual = mountWith({ regime: 'accrual', bank: null })
+    const bank = accrual.findAllComponents(Select)[1]!
+    expect(bank.props('modelValue')).toBe('*')
+    expect(bank.props('disabled')).toBe(true)
+  })
+
+  it('esconde o banco quando o fluxo de caixa não informa bancos', () => {
+    const wrapper = mount(BasisSelect, { props: { basis: { regime: 'cash', bank: null }, banks: [] } })
+    expect(wrapper.findAllComponents(Select)).toHaveLength(1)
   })
 })
 
@@ -629,5 +690,26 @@ describe('LoaderTrack', () => {
     await wrapper.setProps({ active: false })
     expect(wrapper.attributes('role')).toBeUndefined()
     expect(wrapper.classes()).toContain('opacity-0')
+  })
+})
+
+describe('OutsideEntries', () => {
+  const groups = [
+    { reason: 'no-category' as const, label: 'Transferência de Saída', count: 46, total: -773296 },
+    { reason: 'no-category' as const, label: 'Transferência de Entrada', count: 46, total: 694376 },
+    { reason: 'unknown-category' as const, label: 'Servicos', count: 1, total: 5 },
+  ]
+
+  it('resume quantos lançamentos ficam de fora e explica cada motivo', () => {
+    const wrapper = mount(OutsideEntries, { props: { groups, when: 'em fev/26' } })
+    expect(wrapper.get('summary').text().replace(/\s/g, ' ')).toContain('93 lançamentos (-R$ 78,9 mil) em fev/26 não entram na DRE.')
+    const sections = wrapper.findAll('section')
+    expect(sections.map((section) => section.get('h3').text())).toEqual(['Sem categoria', 'Categoria fora da DRE'])
+    expect(sections[0]!.text()).toContain('aba Lista')
+    expect(sections[0]!.findAll('li')[0]!.text()).toMatch(/Transferência de Saída\s*46 lançamentos, -R\$\s?773\.296,00/)
+  })
+
+  it('não aparece quando tudo entra na DRE', () => {
+    expect(mount(OutsideEntries, { props: { groups: [], when: 'em fev/26' } }).html()).toBe('<!--v-if-->')
   })
 })

@@ -1,14 +1,18 @@
 import { flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { container } from '@/infrastructure/container'
+import BasisSelect from '@/presentation/components/BasisSelect.vue'
+import DebtsCard from '@/presentation/components/DebtsCard.vue'
+import DreTable from '@/presentation/components/DreTable.vue'
 import PeriodSelect, { type PeriodGroup } from '@/presentation/components/PeriodSelect.vue'
+import OutsideEntries from '@/presentation/components/OutsideEntries.vue'
+import StockCard from '@/presentation/components/StockCard.vue'
 import ProfitTarget from '@/presentation/components/ProfitTarget.vue'
 import RevenueBar from '@/presentation/components/RevenueBar.vue'
 import StatCard from '@/presentation/components/StatCard.vue'
-import { useReports } from '@/presentation/composables/useReports'
+import { useReport } from '@/presentation/composables/useReport'
 import DrePage from '@/presentation/pages/DrePage.vue'
-import { dreRows, xlsxFile } from '@/test/fixtures'
+import { boatluxFile, dreRows, xlsxFile } from '@/test/fixtures'
 import { mountWithProviders } from './mountWithProviders'
 
 const stubs = {
@@ -17,21 +21,12 @@ const stubs = {
   RankingBarChart: true,
 }
 
-beforeEach(async () => {
-  setActivePinia(createPinia())
-  for (const report of await container.listReports.execute()) await container.removeReport.execute(report.id)
-})
-
-async function importAll(files: File[]) {
-  for (const file of files) await container.importFile.execute(file)
-  await useReports().refresh()
-}
+beforeEach(() => setActivePinia(createPinia()))
 
 describe('DrePage', () => {
   async function mountDre() {
-    await importAll([xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() })])
+    await useReport().importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
     const page = mountWithProviders(DrePage, {
-      props: { id: useReports().reports.value[0]!.id },
       global: { stubs },
     })
     await flushPromises()
@@ -43,7 +38,7 @@ describe('DrePage', () => {
     const band = page.get('section.bg-band')
     const select = page.getComponent(PeriodSelect)
     expect(band.element.contains(select.element)).toBe(true)
-    expect(select.props('modelValue')).toBe('m:2')
+    expect(select.props('modelValue')).toBe('m:2026-03')
     expect(select.props('groups').map((group: PeriodGroup) => group.options.map((o) => o.label))).toEqual([
       ['mar/26', 'fev/26', 'jan/26'],
       ['Acumulado 2026'],
@@ -94,9 +89,98 @@ describe('DrePage', () => {
     for (const title of ['Da receita ao resultado', 'Receita e EBITDA', 'Margens']) expect(page.text()).not.toContain(title)
   })
 
-  it('mostra que a DRE não foi encontrada', () => {
-    const page = mountWithProviders(DrePage, { props: { id: 'nao-existe' }, global: { stubs } })
-    expect(page.text()).toContain('DRE não encontrada.')
+  it('sem fluxo de caixa com fórmulas, não oferece regime nem mostra dívidas e estoque', async () => {
+    const page = await mountDre()
+    expect(page.findComponent(BasisSelect).exists()).toBe(false)
+    expect(page.find('#dividas-estoque').exists()).toBe(false)
+  })
+
+  it('não mostra nada sem planilha importada', () => {
+    const page = mountWithProviders(DrePage, { global: { stubs } })
+    expect(page.text()).toBe('')
   })
 })
 
+
+describe('DrePage com a planilha da Boat Lux', () => {
+  async function mountBoatlux() {
+    await useReport().importFile(boatluxFile())
+    const page = mountWithProviders(DrePage, {
+      global: { stubs },
+    })
+    await flushPromises()
+    return page
+  }
+
+  const tableLine = (page: Awaited<ReturnType<typeof mountBoatlux>>, label: string) =>
+    page
+      .getComponent(DreTable)
+      .props('report')
+      .lines.find((line: { label: string }) => line.label === label)!.values
+
+  it('abre no regime e no banco escolhidos na planilha, com os seletores na faixa do topo', async () => {
+    const page = await mountBoatlux()
+    const basis = page.getComponent(BasisSelect)
+    expect(page.get('section.bg-band').element.contains(basis.element)).toBe(true)
+    expect(basis.props('basis')).toEqual({ regime: 'cash', bank: 'BANCO A' })
+    expect(basis.props('banks')).toEqual(['BANCO A', 'BANCO B'])
+    expect(page.get('#dre-completa').text()).toContain('Caixa, BANCO A')
+  })
+
+  it('recalcula a DRE ao trocar o banco e o regime, mantendo o mês escolhido', async () => {
+    const page = await mountBoatlux()
+    expect(page.getComponent(PeriodSelect).props('modelValue')).toBe('m:2026-02')
+
+    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'cash', bank: null })
+    await flushPromises()
+    expect(tableLine(page, 'RECEITA OPERACIONAL BRUTA')).toEqual([100, 80])
+    expect(page.get('#dre-completa').text()).toContain('Caixa, todas as contas')
+
+    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'accrual', bank: null })
+    await flushPromises()
+    expect(tableLine(page, 'RESULTADO LÍQUIDO (EBITDA)')).toEqual([110, -10])
+    expect(page.getComponent(PeriodSelect).props('modelValue')).toBe('m:2026-02')
+  })
+
+  it('mostra as dívidas e o estoque em cards separados', async () => {
+    const page = await mountBoatlux()
+    const section = page.get('#dividas-estoque')
+    const debts = section.getComponent(DebtsCard)
+    const stock = section.getComponent(StockCard)
+    expect(debts.text()).toContain('Financiamento lancha')
+    expect(debts.text()).toContain('atualizada em 01/10/2026')
+    expect(debts.text()).toMatch(/Saldo devedor\s*R\$\s?12/)
+    expect(stock.text()).toMatch(/Valor em estoque\s*R\$\s?545/)
+    expect(stock.text()).toContain('L29')
+    expect(stock.text()).toMatch(/2 cotas de R\$\s?145\.000/)
+    expect(stock.text()).toContain('Lancha')
+  })
+})
+
+describe('DrePage: avisos da planilha da Boat Lux', () => {
+  async function mountBoatlux() {
+    await useReport().importFile(boatluxFile())
+    const page = mountWithProviders(DrePage, { global: { stubs } })
+    await flushPromises()
+    return page
+  }
+
+  it('aponta o mês em que o saldo inicial não continua o saldo final anterior', async () => {
+    const page = await mountBoatlux()
+    expect(page.get('#caixa').text()).toMatch(/O saldo inicial de fev\/26 está\s*R\$\s?70,00\s*abaixo do saldo final de jan\/26\./)
+  })
+
+  it('na competência, não mostra saldo de caixa e aponta o que fica de fora', async () => {
+    const page = await mountBoatlux()
+    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'accrual', bank: null })
+    page.getComponent(PeriodSelect).vm.$emit('update:modelValue', 'y:2026')
+    await flushPromises()
+
+    const labels = page.findAllComponents(StatCard).map((card) => card.props('label'))
+    expect(labels).not.toContain('Saldo de caixa')
+    expect(page.find('#caixa').exists()).toBe(false)
+    expect(page.getComponent(OutsideEntries).props('groups')).toEqual([
+      { reason: 'no-issue-date', label: 'Sem data de emissão', count: 1, total: 10 },
+    ])
+  })
+})

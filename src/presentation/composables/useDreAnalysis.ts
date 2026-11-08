@@ -1,7 +1,7 @@
-import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { DreAnalysis, DreSelection } from '@/application'
-import { DreMetric, type DreReport } from '@/domain/dre'
-import type { Identifier } from '@/domain/shared'
+import { DEFAULT_BASIS, DreMetric, sameBasis, type DreBasis, type DreReport } from '@/domain/dre'
+import { periodKey, type Period } from '@/domain/shared'
 import type { Insight } from '@/domain/analysis'
 import { container } from '@/infrastructure/container'
 import {
@@ -11,7 +11,7 @@ import {
   formatPeriodLong,
   prettifyLabel,
 } from '@/presentation/format'
-import { useReports } from './useReports'
+import { useReport } from './useReport'
 
 export const DRE_METRIC_LABELS: Record<DreMetric, string> = {
   grossRevenue: 'Receita bruta',
@@ -21,6 +21,7 @@ export const DRE_METRIC_LABELS: Record<DreMetric, string> = {
   operatingExpenses: 'Despesas operacionais',
   ebitda: 'EBITDA',
   netIncome: 'Resultado líquido',
+  openingCash: 'Saldo inicial',
   endingCash: 'Saldo de caixa',
 }
 
@@ -41,28 +42,38 @@ export const DRE_METRIC_INFO: Record<DreMetric, string> = {
   operatingExpenses: `Soma das despesas fixas da operação (pessoal, aluguel, serviços...). ${COMPARISON}`,
   ebitda: `Margem de contribuição − despesas operacionais + outras receitas operacionais. Mostra o resultado da operação antes de itens não desembolsáveis e movimentações não operacionais. ${COMPARISON}`,
   netIncome: `EBITDA − despesas não desembolsáveis ± entradas e saídas não operacionais (aplicações, transferências). Margem líquida = resultado ÷ receita bruta. ${COMPARISON}`,
+  openingCash: 'Saldo de caixa no início do primeiro mês do período, pelos lançamentos "Saldo inicial" do fluxo de caixa.',
   endingCash: 'Saldo final de caixa do último mês do período (saldo inicial + variação do mês). Não é somado entre meses. A variação compara com o saldo do período anterior.',
 }
 
-const selectionKey = (s: DreSelection) => (s.type === 'month' ? `m:${s.index}` : `y:${s.year}`)
+const selectionKey = (s: DreSelection, periods: readonly Period[]) =>
+  s.type === 'month' ? `m:${periods[s.index] ? periodKey(periods[s.index]!) : s.index}` : `y:${s.year}`
 
-export function useDreAnalysis(id: MaybeRefOrGetter<Identifier>) {
-  const { reports } = useReports()
-  const report = computed(() => reports.value.find((r) => r.id === toValue(id)) ?? null)
+export function useDreAnalysis() {
+  const { report: imported } = useReport()
+
+  /** Regime (caixa ou competência) e banco: começa no que estava escolhido na planilha. */
+  const basis = ref<DreBasis>(imported.value?.basis ?? DEFAULT_BASIS)
+  watch(imported, (current) => (basis.value = current?.basis ?? DEFAULT_BASIS))
+  const setBasis = (next: DreBasis) => {
+    if (!sameBasis(next, basis.value)) basis.value = next
+  }
+  const report = computed(() => imported.value?.withBasis(basis.value) ?? null)
+  const periodsOf = () => report.value?.periods ?? []
 
   const selections = computed(() => (report.value ? container.analyzeDre.selections(report.value) : []))
   const selectedKey = ref('')
   watch(
     selections,
     (options) => {
-      if (!options.some((o) => selectionKey(o) === selectedKey.value)) {
-        selectedKey.value = options[0] ? selectionKey(options[0]) : ''
+      if (!options.some((o) => selectionKey(o, periodsOf()) === selectedKey.value)) {
+        selectedKey.value = options[0] ? selectionKey(options[0], periodsOf()) : ''
       }
     },
     { immediate: true },
   )
 
-  const selection = computed(() => selections.value.find((o) => selectionKey(o) === selectedKey.value) ?? null)
+  const selection = computed(() => selections.value.find((o) => selectionKey(o, periodsOf()) === selectedKey.value) ?? null)
 
   const analysis = computed(() =>
     report.value && selection.value ? container.analyzeDre.execute(report.value, selection.value) : null,
@@ -101,8 +112,10 @@ export function useDreAnalysis(id: MaybeRefOrGetter<Identifier>) {
 
   return {
     report,
+    basis: computed(() => report.value?.basis ?? basis.value),
+    setBasis,
     profitTargetFor,
-    selections: computed(() => selections.value.map((s) => ({ key: selectionKey(s), label: labelOf(s), type: s.type }))),
+    selections: computed(() => selections.value.map((s) => ({ key: selectionKey(s, periodsOf()), label: labelOf(s), type: s.type }))),
     selectedKey,
     analysis,
     periodLabels,

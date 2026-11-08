@@ -1,8 +1,6 @@
-import { createRouter, createWebHistory, type RouteLocationRaw, type RouteRecordRaw } from 'vue-router'
-import type { Report } from '@/domain/report'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { finishPageLoading, startPageLoading } from '@/presentation/composables/usePageLoading'
-
-export const routeForReport = (report: Report): RouteLocationRaw => ({ name: 'dre', params: { id: report.id } })
+import { useReport } from '@/presentation/composables/useReport'
 
 export const routes: RouteRecordRaw[] = [
   {
@@ -11,10 +9,11 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/presentation/pages/ImportPage.vue'),
   },
   {
-    path: '/dre/:id',
+    path: '/dre',
     name: 'dre',
     component: () => import('@/presentation/pages/DrePage.vue'),
-    props: true,
+    // Sem planilha importada (ex.: depois de recarregar a página), volta para a importação.
+    beforeEnter: () => (useReport().report.value ? true : { name: 'import' }),
   },
   {
     path: '/:pathMatch(.*)*',

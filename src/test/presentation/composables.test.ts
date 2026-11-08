@@ -2,8 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { container } from '@/infrastructure/container'
 import { useDreAnalysis } from '@/presentation/composables/useDreAnalysis'
-import { useFileImport } from '@/presentation/composables/useFileImport'
-import { useReports } from '@/presentation/composables/useReports'
+import { useReport } from '@/presentation/composables/useReport'
 import {
   finishPageLoading,
   pageEntering,
@@ -12,7 +11,7 @@ import {
   usePageLoading,
 } from '@/presentation/composables/usePageLoading'
 import { useTweenedNumbers } from '@/presentation/composables/useTween'
-import { dreRows, xlsxFile } from '@/test/fixtures'
+import { boatluxFile, dreRows, xlsxFile } from '@/test/fixtures'
 import { createApp, defineComponent, nextTick, ref } from 'vue'
 
 /** Roda um composable dentro de um componente montado (para hooks de ciclo de vida). */
@@ -22,57 +21,53 @@ function withSetup<T>(composable: () => T): T {
   return result
 }
 
-async function clearReports() {
-  for (const report of await container.listReports.execute()) await container.removeReport.execute(report.id)
-}
-
-beforeEach(async () => {
-  setActivePinia(createPinia())
-  await clearReports()
-})
+beforeEach(() => setActivePinia(createPinia()))
 
 afterEach(() => vi.restoreAllMocks())
 
-describe('useFileImport', () => {
-  it('importa vários arquivos, junta os erros e atualiza a lista de relatórios', async () => {
-    const { importFiles, errors, isImporting } = useFileImport()
-    const imported = await importFiles([
-      xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }),
-      new File([], 'vazio.xlsx'),
-      new File(['x'], 'foto.png'),
-    ])
+describe('useReport', () => {
+  it('abre a planilha importada e a substitui na próxima importação', async () => {
+    const { importFile, report, error, isImporting } = useReport()
+    const first = await importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
+    expect(report.value).toBe(first)
+    expect(report.value?.name).toBe('DRE')
 
-    expect(imported.map((report) => report.kind)).toEqual(['dre'])
-    expect(errors.value).toEqual(['O arquivo está vazio: vazio.xlsx', 'Formato não suportado: foto.png'])
+    await importFile(boatluxFile())
+    expect(report.value?.name).toBe('Fechamento 2026')
+    expect(error.value).toBeNull()
     expect(isImporting.value).toBe(false)
-    expect(useReports().reports.value).toHaveLength(1)
+  })
+
+  it('mantém a planilha aberta e mostra o erro quando a importação falha', async () => {
+    const { importFile, report, error, clearError } = useReport()
+    await importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
+    expect(await importFile(new File([], 'vazio.xlsx'))).toBeNull()
+    expect(error.value).toBe('O arquivo está vazio: vazio.xlsx')
+    expect(report.value?.name).toBe('DRE')
+    clearError()
+    expect(useReport().error.value).toBeNull()
   })
 
   it('ignora uma nova importação enquanto outra está em andamento', async () => {
-    const { importFiles } = useFileImport()
-    const first = importFiles([xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() })])
-    const second = await importFiles([xlsxFile('DRE 2.xlsx', { 'DRE Geral': dreRows() })])
+    const { importFile, report } = useReport()
+    const first = importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
+    expect(await importFile(boatluxFile())).toBeNull()
     await first
-
-    expect(second).toEqual([])
-    expect(useReports().reports.value).toHaveLength(1)
+    expect(report.value?.name).toBe('DRE')
   })
 
-
-  it('compartilha o estado entre quem usa o composable', async () => {
-    await useFileImport().importFiles([new File([], 'vazio.xlsx')])
-    expect(useFileImport().errors.value).toHaveLength(1)
-    useFileImport().clearErrors()
-    expect(useFileImport().errors.value).toEqual([])
+  it('explica erros inesperados', async () => {
+    vi.spyOn(container.importFile, 'execute').mockRejectedValueOnce('falhou')
+    await useReport().importFile(new File(['x'], 'DRE.xlsx'))
+    expect(useReport().error.value).toBe('Erro inesperado ao importar DRE.xlsx')
   })
 })
 
 describe('useDreAnalysis', () => {
   it('começa pelo mês mais recente e permite trocar o período', async () => {
-    const [report] = await container.importFile.execute(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
-    await useReports().refresh()
+    await useReport().importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
 
-    const { selections, selectedKey, analysis, periodLabels, insights } = useDreAnalysis(report!.id)
+    const { selections, selectedKey, analysis, periodLabels, insights } = useDreAnalysis()
     expect(selections.value.map((s) => s.label)).toEqual(['mar/26', 'fev/26', 'jan/26', 'Acumulado 2026'])
     expect(periodLabels.value).toEqual({
       currentLong: 'março de 2026',
@@ -92,8 +87,22 @@ describe('useDreAnalysis', () => {
     expect(periodLabels.value.heading).toBe('Resultado acumulado de 2026')
   })
 
-  it('não encontra uma DRE inexistente', () => {
-    const { report, analysis } = useDreAnalysis('nao-existe')
+  it('troca o regime e volta ao da planilha ao importar outra', async () => {
+    await useReport().importFile(boatluxFile())
+    const { basis, setBasis, report } = useDreAnalysis()
+    expect(basis.value).toEqual({ regime: 'cash', bank: 'BANCO A' })
+
+    setBasis({ regime: 'accrual', bank: null })
+    await nextTick()
+    expect(report.value?.basis.regime).toBe('accrual')
+
+    await useReport().importFile(boatluxFile())
+    await nextTick()
+    expect(basis.value).toEqual({ regime: 'cash', bank: 'BANCO A' })
+  })
+
+  it('fica vazio sem planilha importada', () => {
+    const { report, analysis } = useDreAnalysis()
     expect(report.value).toBeNull()
     expect(analysis.value).toBeNull()
   })

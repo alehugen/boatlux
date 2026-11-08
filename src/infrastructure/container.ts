@@ -1,13 +1,10 @@
-import { AnalyzeDreUseCase, ImportFileUseCase, ListReportsUseCase, RemoveReportUseCase } from '@/application'
-import { InMemoryReportRepository } from './InMemoryReportRepository'
+import { AnalyzeDreUseCase, ImportFileUseCase } from '@/application'
 import { XlsxFileParser } from './XlsxFileParser'
 
-const reportRepository = new InMemoryReportRepository()
-const parsers = [new XlsxFileParser()]
+const createWorker =
+  typeof Worker === 'undefined' ? null : () => new Worker(new URL('./xlsx.worker.ts', import.meta.url), { type: 'module' })
 
 export const container = {
-  importFile: new ImportFileUseCase(parsers, reportRepository),
-  listReports: new ListReportsUseCase(reportRepository),
-  removeReport: new RemoveReportUseCase(reportRepository),
+  importFile: new ImportFileUseCase(new XlsxFileParser(createWorker)),
   analyzeDre: new AnalyzeDreUseCase(),
 }

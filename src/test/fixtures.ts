@@ -1,4 +1,5 @@
 import { utils, write } from 'xlsx'
+import { cellKey } from '@/domain/ingestion'
 
 type DreLine = readonly [label: string, ...values: number[]] | null
 
@@ -10,7 +11,7 @@ const DRE_MONTHS = [
 ] as const
 
 export const LEDGER_ROWS: string[][] = [
-  ['DATA DE EMISSÃO', 'MOVIMENTAÇÃO', 'HISTÓRICO', 'CLASSIFICAÇÃO', 'VALOR', 'DATA PAGTO', 'UNIDADE'],
+  ['DATA DE EMISSÃO', 'MOVIMENTAÇÃO', 'HISTÓRICO', 'CATEGORIA', 'VALOR', 'DATA PAGTO', 'UNIDADE'],
   ['2026-02-20', 'Saída', 'Folha de março, parte 1', 'Salários', '200', '2026-03-05', 'Matriz'],
   ['2026-02-20', 'Saída', 'Folha de março, parte 2', 'Salários', '150', '2026-03-20', 'Matriz'],
   ['2026-03-01', 'Saída', 'Aluguel da loja', 'Aluguel', '250', '2026-03-10', 'Matriz'],
@@ -93,11 +94,101 @@ export function dreRows({ labelColumn = 0, lines = DRE_LINES } = {}): string[][]
   return [title, blank(), monthRow, yearRow, ...body]
 }
 
-export function xlsxFile(name: string, sheets: Record<string, string[][]>): File {
+export function xlsxFile(
+  name: string,
+  sheets: Record<string, string[][]>,
+  formulas: Record<string, ReadonlyMap<string, string>> = {},
+): File {
   const workbook = utils.book_new()
   for (const [sheetName, rows] of Object.entries(sheets)) {
     const cells = rows.map((row) => row.map((cell) => (cell !== '' && Number.isFinite(Number(cell)) ? Number(cell) : cell)))
-    utils.book_append_sheet(workbook, utils.aoa_to_sheet(cells), sheetName)
+    const sheet = utils.aoa_to_sheet(cells)
+    for (const [key, formula] of formulas[sheetName] ?? []) {
+      const [r, c] = key.split(':').map(Number) as [number, number]
+      const address = utils.encode_cell({ r, c })
+      sheet[address] = { ...(sheet[address] ?? { t: 'n', v: 0 }), f: formula }
+    }
+    utils.book_append_sheet(workbook, sheet, sheetName)
   }
   return new File([write(workbook, { type: 'array', bookType: 'xlsx' })], name)
+}
+
+const SUMIFS = `IF($B$1="Competência",SUMIFS('Fluxo de Caixa'!$L:$L,'Fluxo de Caixa'!$D:$D,$A:$A),SUMIFS('Fluxo de Caixa'!$L:$L,'Fluxo de Caixa'!$P:$P,$B$2))`
+
+/**
+ * Uma DRE no formato da Boat Lux: seletores "Caixa / BANCO A" no topo, contas somadas do fluxo de caixa
+ * (SOMASES) e totais por fórmula. Os valores são os de Caixa / BANCO A.
+ */
+export function basisDre(selector = ['Caixa', 'BANCO A']): { rows: string[][]; formulas: Map<string, string> } {
+  type Line = [label: string, jan: number, feb: number, formula: (col: string) => string]
+  const lines: (Line | null)[] = [
+    ['RECEITA OPERACIONAL BRUTA', 100, 30, (c) => `SUM(${c}6:${c}7)`],
+    ['Vendas', 100, 0, () => SUMIFS],
+    ['Serviços', 0, 30, () => SUMIFS],
+    null,
+    ['DESPESAS OPERACIONAIS', -40, 0, (c) => `SUM(${c}10:${c}10)`],
+    ['Aluguel', -40, 0, () => SUMIFS],
+    null,
+    ['RESULTADO LÍQUIDO (EBITDA)', 60, 30, (c) => `${c}5+${c}9`],
+    null,
+    ['Saldo inicial', 10, 0, () => SUMIFS],
+    ['Saldo final', 70, 30, (c) => `${c}14+${c}12`],
+  ]
+  const rows = [
+    ['DRE', selector[0]!, '', ''],
+    ['', selector[1]!, '', ''],
+    ['', '', '1', '2'],
+    ['DESCRIÇÃO', '', '2026', '2026'],
+  ]
+  const formulas = new Map<string, string>()
+  for (const line of lines) {
+    if (!line) {
+      rows.push(['', '', '', ''])
+      continue
+    }
+    const [label, jan, feb, formula] = line
+    formulas.set(cellKey(rows.length, 2), formula('C'))
+    formulas.set(cellKey(rows.length, 3), formula('D'))
+    rows.push([label, '', String(jan), String(feb)])
+  }
+  return { rows, formulas }
+}
+
+export const BASIS_LEDGER_ROWS: string[][] = [
+  ['DATA DE EMISSÃO', 'CATEGORIA', 'VALOR', 'DATA PAGTO', 'BANCO'],
+  ['2026-01-10', 'Vendas', '100', '2026-01-15', 'BANCO A'],
+  ['2026-01-20', 'Vendas', '50', '2026-02-05', 'BANCO B'],
+  ['2026-02-01', 'Serviços', '30', '2026-02-10', 'BANCO A'],
+  ['2026-01-01', 'Aluguel', '-40', '2026-01-05', 'BANCO A'],
+  ['2026-02-01', 'Aluguel', '-40', '', ''],
+  ['', 'Saldo inicial', '10', '2026-01-01', 'BANCO A'],
+]
+
+export const DEBT_ROWS: string[][] = [
+  ['Última atualização: 01/10/2026', 'SALDO', '10/2026', '11/2026', '12/2026', '01/2027'],
+  ['Empréstimo banco', 'R$ 3,000.00', '1000', '1000', '1000', ''],
+  ['Financiamento lancha', '9000', '', '3000', '3000', '3000'],
+  ['Quitada', '0', '', '', '', ''],
+  ['TOTAL', '12000', '1000', '4000', '4000', '3000'],
+  ['', '', '', '85000', '', ''],
+]
+
+export const STOCK_ROWS: string[][] = [
+  ['Cotas disponíveis', 'Valor da cota', '10/2026', '', '', '', '', '', '', 'J12', '32000'],
+  ['J12', 'R$ 12,000.00'],
+  ['L29 - 01', '145000'],
+  ['L29 - 02', '145000'],
+  ['L31- 05', '129000'],
+  ['L31 - 06', '114000'],
+  ['', '545000'],
+]
+
+/** A planilha completa da Boat Lux: DRE com fórmulas, fluxo de caixa, dívidas e estoque. */
+export function boatluxFile(): File {
+  const dre = basisDre()
+  return xlsxFile(
+    'Fechamento 2026.xlsx',
+    { 'Fluxo de Caixa': BASIS_LEDGER_ROWS, 'DRE Geral': dre.rows, 'Dívidas  ': DEBT_ROWS, Estoque: STOCK_ROWS },
+    { 'DRE Geral': dre.formulas },
+  )
 }

@@ -7,7 +7,7 @@ import { buildDreInsights } from '@/presentation/composables/useDreAnalysis'
 const titles = (insights: readonly { title: string }[]) => insights.map((i) => i.title)
 
 describe('buildDreInsights', () => {
-  const report = DreReport.fromTable({ name: 'DRE', sheet: 'DRE Geral', rows: dreRows() })!
+  const report = DreReport.fromTable({ sheet: 'DRE Geral', rows: dreRows() })!
   const analysis = new AnalyzeDreUseCase().execute(report, { type: 'month', index: 2 })
   const insights = buildDreInsights(report, analysis, { previous: 'fev/26', window: 'até mar/26', when: 'em mar/26' })
 

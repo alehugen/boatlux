@@ -27,7 +27,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,vue}'],
-      exclude: ['src/test/**', 'src/main.ts'],
+      exclude: ['src/test/**', 'src/main.ts', 'src/infrastructure/xlsx.worker.ts'],
       reporter: ['text', 'html'],
       thresholds: {
         'src/domain/**': { lines: 95, functions: 95, branches: 75 },
