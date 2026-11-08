@@ -1,6 +1,6 @@
 import { flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BasisSelect from '@/presentation/components/BasisSelect.vue'
 import DebtsCard from '@/presentation/components/DebtsCard.vue'
 import DreTable from '@/presentation/components/DreTable.vue'
@@ -22,6 +22,7 @@ const stubs = {
 }
 
 beforeEach(() => setActivePinia(createPinia()))
+afterEach(() => vi.restoreAllMocks())
 
 describe('DrePage', () => {
   async function mountDre() {
@@ -48,7 +49,7 @@ describe('DrePage', () => {
     expect(band.getComponent(RevenueBar).props('flow')).toMatchObject({ revenue: 900, result: -70 })
   })
 
-  it('mostra os indicadores em cards, sem a navegação lateral, e a barra fixa só depois de rolar', async () => {
+  it('mostra os indicadores em cards e a barra fixa só depois de rolar', async () => {
     const page = await mountDre()
     const section = page.get('#indicadores').element
     const cards = page.findAllComponents(StatCard).filter((card) => section.contains(card.element))
@@ -60,8 +61,21 @@ describe('DrePage', () => {
       'Resultado líquido',
       'Saldo de caixa',
     ])
-    expect(page.find('nav[aria-label="Seções da página"]').exists()).toBe(false)
     expect(page.findAllComponents(PeriodSelect)).toHaveLength(1)
+  })
+
+  it('tem um menu com as seções da página, cada uma ligada à sua seção', async () => {
+    const page = await mountDre()
+    const links = page.findAll('nav[aria-label="Seções da página"] a')
+    expect(links.map((link) => link.text())).toEqual([
+      'Indicadores',
+      'Pontos de análise',
+      'Meta de lucro',
+      'Custos e receita',
+      'Saldo de caixa',
+      'DRE completa',
+    ])
+    for (const link of links) expect(page.find(link.attributes('href')!).exists()).toBe(true)
   })
 
   it('recalcula a página ao trocar para o acumulado do ano', async () => {
@@ -140,6 +154,27 @@ describe('DrePage com a planilha da Boat Lux', () => {
     await flushPromises()
     expect(tableLine(page, 'RESULTADO LÍQUIDO (EBITDA)')).toEqual([110, -10])
     expect(page.getComponent(PeriodSelect).props('modelValue')).toBe('m:2026-02')
+  })
+
+  it('leva dívidas e estoque para o menu de seções', async () => {
+    const page = await mountBoatlux()
+    const labels = page.findAll('nav[aria-label="Seções da página"] a').map((link) => link.text())
+    expect(labels.at(-1)).toBe('Dívidas e estoque')
+  })
+
+  it('mantém regime, conta e período na barra fixa ao rolar', async () => {
+    const page = await mountBoatlux()
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ top: -400, bottom: -10 } as DOMRect)
+    Object.defineProperty(window, 'scrollY', { value: 600, configurable: true })
+    window.dispatchEvent(new Event('scroll'))
+    await vi.waitFor(() => expect(page.findAllComponents(BasisSelect)).toHaveLength(2))
+
+    const docked = page.findAllComponents(BasisSelect).find((select) => select.props('compact'))!
+    expect(page.findAllComponents(PeriodSelect).filter((select) => select.props('compact'))).toHaveLength(1)
+    docked.vm.$emit('change', { regime: 'cash', bank: 'BANCO B' })
+    await flushPromises()
+    expect(page.findAllComponents(BasisSelect).every((select) => select.props('basis').bank === 'BANCO B')).toBe(true)
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
   })
 
   it('mostra as dívidas e o estoque em cards separados', async () => {

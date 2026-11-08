@@ -24,6 +24,8 @@ Todo o processamento acontece **no navegador**, e nenhum dado é enviado para se
 - **Gráficos:** para onde vai a receita, composição da receita e saldo de caixa.
 - **DRE completa** com grupos recolhíveis, valores (R$) ou AV%, escolha dos meses e tela cheia. Clicar em um valor abre os lançamentos que o compõem.
 - **Dívidas e estoque:** saldo devedor, parcelas do mês e última parcela de cada dívida; cotas em estoque agrupadas por embarcação.
+- **Menu de seções** fixo ao lado do conteúdo (no celular, uma faixa no topo), destacando a seção na tela.
+- **Filtros fixos:** ao rolar, regime, conta e período continuam numa barra fixa no topo.
 - Filtro por mês ou acumulado do ano. A planilha é lida num Web Worker, sem travar a tela.
 
 ## Formato da planilha

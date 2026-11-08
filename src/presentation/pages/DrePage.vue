@@ -8,6 +8,7 @@ import ChartCard from '@/presentation/components/ChartCard.vue'
 import DebtsCard from '@/presentation/components/DebtsCard.vue'
 import DreTable from '@/presentation/components/DreTable.vue'
 import OutsideEntries from '@/presentation/components/OutsideEntries.vue'
+import SectionNav, { type NavSection } from '@/presentation/components/SectionNav.vue'
 import StockCard from '@/presentation/components/StockCard.vue'
 import InsightList from '@/presentation/components/InsightList.vue'
 import PageBand from '@/presentation/components/PageBand.vue'
@@ -95,7 +96,24 @@ const kpiCards = computed(() =>
   })),
 )
 
-/** Barra fixa com o período: aparece quando o topo da página sai de vista. */
+/** As seções do menu lateral, na ordem da página; só entram as que aparecem para esta planilha. */
+const navSections = computed<NavSection[]>(() => {
+  const a = analysis.value
+  const r = report.value
+  if (!a || !r) return []
+  const sections: (NavSection | false)[] = [
+    { id: 'indicadores', label: 'Indicadores' },
+    { id: 'analise', label: 'Pontos de análise' },
+    !!a.profitTarget && { id: 'meta', label: 'Meta de lucro' },
+    { id: 'custos', label: 'Custos e receita' },
+    !!a.monthly.cash && { id: 'caixa', label: 'Saldo de caixa' },
+    { id: 'dre-completa', label: 'DRE completa' },
+    !!(r.debts || r.stock) && { id: 'dividas-estoque', label: r.debts && r.stock ? 'Dívidas e estoque' : r.debts ? 'Dívidas' : 'Estoque' },
+  ]
+  return sections.filter((section): section is NavSection => !!section)
+})
+
+/** Barra fixa com os filtros: aparece quando o topo da página sai de vista. */
 const heroHead = useTemplateRef('heroHead')
 const docked = useScrolledPast(() => heroHead.value)
 
@@ -178,20 +196,26 @@ const expenseItems = computed(() =>
         class="fixed inset-x-0 top-18 z-(--layer-nav) border-t border-band-border/60 bg-band text-band-foreground shadow-floating"
       >
         <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
-          <p class="flex min-w-0 items-center gap-3">
+          <p class="hidden min-w-0 items-center gap-3 md:flex">
             <span class="truncate">{{ periodLabels.heading }}</span>
-            <span v-if="basisLabel" class="hidden truncate text-sm text-band-muted lg:inline">{{ basisLabel }}</span>
-            <span v-if="headline" class="hidden items-center gap-2 text-band-muted sm:inline-flex">
+            <span v-if="headline" class="hidden items-center gap-2 text-band-muted xl:inline-flex">
               <span class="figure text-band-foreground">{{ headline.value }}</span>
               <ResultStamp :positive="headline.positive" size="sm" />
             </span>
           </p>
-          <PeriodSelect v-model="selectedKey" :groups="periodGroups" compact />
+          <!-- Os mesmos filtros do topo: regime, conta e período continuam à mão ao rolar. -->
+          <div class="-mx-4 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:flex-none md:overflow-visible md:px-0">
+            <BasisSelect v-if="report.canChangeBasis" :basis="basis" :banks="report.banks" compact @change="setBasis" />
+            <PeriodSelect v-model="selectedKey" :groups="periodGroups" compact />
+          </div>
         </div>
       </div>
     </Transition>
 
-    <div class="page-fade mx-auto max-w-7xl space-y-14 px-4 py-12 sm:px-8">
+    <div class="page-fade mx-auto grid max-w-7xl gap-x-10 gap-y-6 px-4 py-12 sm:px-8 lg:grid-cols-[11rem_minmax(0,1fr)]">
+      <SectionNav :sections="navSections" />
+
+      <div class="min-w-0 space-y-14">
       <div v-if="report.ignoredPeriods.length || analysis.outside.length" class="space-y-3">
         <p v-if="report.ignoredPeriods.length" class="surface border-l-4 border-l-primary px-4 py-3 text-sm text-body">
           <span class="text-foreground">{{ formatPeriodList(report.ignoredPeriods) }}</span>
@@ -295,6 +319,7 @@ const expenseItems = computed(() =>
           <StockCard v-if="report.stock" :stock="report.stock" />
         </div>
       </PageSection>
+      </div>
     </div>
   </div>
 </template>

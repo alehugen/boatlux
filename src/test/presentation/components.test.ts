@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProfitTargetBase } from '@/application'
 import { DreReport, type LedgerEntry } from '@/domain/dre'
 import AppFooter from '@/presentation/components/AppFooter.vue'
@@ -14,6 +14,7 @@ import OutsideEntries from '@/presentation/components/OutsideEntries.vue'
 import LoaderTrack from '@/presentation/components/LoaderTrack.vue'
 import GoalStatement from '@/presentation/components/profit-target/GoalStatement.vue'
 import RevenueBar from '@/presentation/components/RevenueBar.vue'
+import SectionNav from '@/presentation/components/SectionNav.vue'
 import ProfitTarget from '@/presentation/components/ProfitTarget.vue'
 import SegmentedControl from '@/presentation/components/SegmentedControl.vue'
 import StatCard from '@/presentation/components/StatCard.vue'
@@ -711,5 +712,49 @@ describe('OutsideEntries', () => {
 
   it('não aparece quando tudo entra na DRE', () => {
     expect(mount(OutsideEntries, { props: { groups: [], when: 'em fev/26' } }).html()).toBe('<!--v-if-->')
+  })
+})
+
+describe('SectionNav', () => {
+  const sections = [
+    { id: 'indicadores', label: 'Indicadores' },
+    { id: 'dre-completa', label: 'DRE completa' },
+  ]
+
+  function mountNav() {
+    const host = document.createElement('div')
+    host.innerHTML = '<section id="indicadores"></section><section id="dre-completa"></section>'
+    document.body.append(host)
+    const wrapper = mount(SectionNav, { props: { sections }, attachTo: document.body })
+    const place = (id: string, top: number) =>
+      vi.spyOn(document.getElementById(id)!, 'getBoundingClientRect').mockReturnValue({ top } as DOMRect)
+    return { wrapper, host, place }
+  }
+
+  it('destaca a seção que chegou ao topo ao rolar', async () => {
+    const { wrapper, host, place } = mountNav()
+    const current = () => wrapper.find('[aria-current="location"]').text()
+    place('indicadores', 0)
+    place('dre-completa', 900)
+    window.dispatchEvent(new Event('scroll'))
+    await vi.waitFor(() => expect(current()).toBe('Indicadores'))
+
+    place('indicadores', -800)
+    place('dre-completa', 0)
+    window.dispatchEvent(new Event('scroll'))
+    await vi.waitFor(() => expect(current()).toBe('DRE completa'))
+    wrapper.unmount()
+    host.remove()
+  })
+
+  it('leva até a seção ao clicar e já a marca como atual', async () => {
+    const { wrapper, host } = mountNav()
+    const scrollIntoView = vi.fn()
+    document.getElementById('dre-completa')!.scrollIntoView = scrollIntoView
+    await wrapper.findAll('a')[1]!.trigger('click')
+    expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }))
+    expect(wrapper.findAll('a')[1]!.attributes('aria-current')).toBe('location')
+    wrapper.unmount()
+    host.remove()
   })
 })

@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 /**
  * Os seletores da planilha: regime (caixa ou competência) e, no caixa, o banco.
  * Na competência a planilha soma todos os bancos, então o banco fica travado em "Todas".
+ * `compact` esconde os rótulos (barra fixa ao rolar).
  */
-const props = defineProps<{ basis: DreBasis; banks: readonly string[] }>()
+const props = withDefaults(defineProps<{ basis: DreBasis; banks: readonly string[]; compact?: boolean }>(), { compact: false })
 const emit = defineEmits<{ change: [basis: DreBasis] }>()
 
 const ALL = '*'
@@ -35,11 +36,11 @@ const TRIGGER =
 </script>
 
 <template>
-  <div class="flex flex-wrap items-end gap-3 text-sm">
+  <div class="flex items-end text-sm" :class="compact ? 'gap-2' : 'flex-wrap gap-3'">
     <div class="flex flex-col gap-1.5">
-      <span :id="regimeId" class="text-band-muted">Regime</span>
+      <span :id="regimeId" :class="compact ? 'sr-only' : 'text-band-muted'">Regime</span>
       <Select v-model="regime">
-        <SelectTrigger :aria-labelledby="regimeId" :class="TRIGGER" class="w-40">
+        <SelectTrigger :aria-labelledby="regimeId" :class="[TRIGGER, compact ? 'w-36 data-[size=default]:h-9' : 'w-40']">
           <PhScales aria-hidden="true" />
           <SelectValue />
         </SelectTrigger>
@@ -50,12 +51,11 @@ const TRIGGER =
     </div>
 
     <div v-if="banks.length" class="flex flex-col gap-1.5">
-      <span :id="bankId" class="text-band-muted">Conta</span>
+      <span :id="bankId" :class="compact ? 'sr-only' : 'text-band-muted'">Conta</span>
       <Select v-model="bank" :disabled="isAccrual">
         <SelectTrigger
           :aria-labelledby="bankId"
-          :class="TRIGGER"
-          class="w-56"
+          :class="[TRIGGER, compact ? 'w-44 data-[size=default]:h-9 *:data-[slot=select-value]:truncate' : 'w-56']"
           :title="isAccrual ? 'Na competência, a DRE soma todas as contas, como na planilha.' : undefined"
         >
           <PhBank aria-hidden="true" />
