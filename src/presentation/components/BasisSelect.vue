@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { PhBank, PhScales } from '@phosphor-icons/vue'
+import { PhScales, PhStorefront } from '@phosphor-icons/vue'
 import { computed, useId } from 'vue'
 import { DreRegime, type DreBasis } from '@/domain/dre'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/ui/select'
 
 /**
- * Os seletores da planilha: regime (caixa ou competência) e, no caixa, o banco.
- * Na competência a planilha soma todos os bancos, então o banco fica travado em "Todas".
- * `compact` esconde os rótulos (barra fixa ao rolar).
+ * Os seletores da aba DRE Unidades: regime (caixa ou competência) e unidade (Repasse, Comercial, GC...).
+ * "Todas as unidades" soma a empresa inteira. `compact` esconde os rótulos (barra fixa ao rolar).
  */
-const props = withDefaults(defineProps<{ basis: DreBasis; banks: readonly string[]; compact?: boolean }>(), { compact: false })
+const props = withDefaults(defineProps<{ basis: DreBasis; units: readonly string[]; compact?: boolean }>(), { compact: false })
 const emit = defineEmits<{ change: [basis: DreBasis] }>()
 
 const ALL = '*'
@@ -19,20 +18,19 @@ const REGIMES = [
 ]
 
 const regimeId = useId()
-const bankId = useId()
-const isAccrual = computed(() => props.basis.regime === DreRegime.Accrual)
+const unitId = useId()
 
 const regime = computed({
   get: () => props.basis.regime,
-  set: (value) => emit('change', { regime: value, bank: value === DreRegime.Accrual ? null : props.basis.bank }),
+  set: (value) => emit('change', { regime: value, unit: props.basis.unit }),
 })
-const bank = computed({
-  get: () => (isAccrual.value ? ALL : (props.basis.bank ?? ALL)),
-  set: (value) => emit('change', { regime: DreRegime.Cash, bank: value === ALL ? null : value }),
+const unit = computed({
+  get: () => props.basis.unit ?? ALL,
+  set: (value) => emit('change', { regime: props.basis.regime, unit: value === ALL ? null : value }),
 })
 
 const TRIGGER =
-  '*:data-[slot=select-value]:block *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate border-band-border bg-transparent text-band-foreground transition-colors duration-(--duration-fast) hover:border-band-muted hover:bg-white/5 data-[size=default]:h-10 dark:bg-transparent dark:hover:bg-white/5 [&_svg]:text-band-muted disabled:opacity-60'
+  '*:data-[slot=select-value]:block *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate border-band-border bg-transparent text-band-foreground transition-colors duration-(--duration-fast) hover:border-band-muted hover:bg-white/5 data-[size=default]:h-10 dark:bg-transparent dark:hover:bg-white/5 [&_svg]:text-band-muted'
 </script>
 
 <template>
@@ -50,20 +48,16 @@ const TRIGGER =
       </Select>
     </div>
 
-    <div v-if="banks.length" class="flex flex-col gap-1.5">
-      <span :id="bankId" :class="compact ? 'sr-only' : 'text-band-muted'">Conta</span>
-      <Select v-model="bank" :disabled="isAccrual">
-        <SelectTrigger
-          :aria-labelledby="bankId"
-          :class="[TRIGGER, compact ? 'w-44 data-[size=default]:h-9' : 'w-56']"
-          :title="isAccrual ? 'Na competência, a DRE soma todas as contas, como na planilha.' : undefined"
-        >
-          <PhBank aria-hidden="true" />
+    <div v-if="units.length" class="flex flex-col gap-1.5">
+      <span :id="unitId" :class="compact ? 'sr-only' : 'text-band-muted'">Unidade</span>
+      <Select v-model="unit">
+        <SelectTrigger :aria-labelledby="unitId" :class="[TRIGGER, compact ? 'w-44 data-[size=default]:h-9' : 'w-52']">
+          <PhStorefront aria-hidden="true" />
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem :value="ALL">Todas as contas</SelectItem>
-          <SelectItem v-for="name in banks" :key="name" :value="name">{{ name }}</SelectItem>
+          <SelectItem v-for="name in units" :key="name" :value="name">{{ name }}</SelectItem>
+          <SelectItem :value="ALL">Todas as unidades</SelectItem>
         </SelectContent>
       </Select>
     </div>

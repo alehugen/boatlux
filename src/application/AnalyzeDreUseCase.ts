@@ -1,8 +1,8 @@
 import {
   categoryKey,
+  dateInRegime,
   DreLineKind,
   DreMetric,
-  DreRegime,
   type DreBasis,
   type DreLine,
   type DreReport,
@@ -248,7 +248,7 @@ export class AnalyzeDreUseCase {
     const period = report.periods[periodIndex]
     if (!line || !period || !report.isTraceable(line)) return null
 
-    const dateOf = (entry: LedgerEntry) => (report.basis.regime === DreRegime.Accrual ? entry.issueDate : entry.date)
+    const dateOf = (entry: LedgerEntry) => dateInRegime(entry, report.basis.regime)
     const entries = [...report.entriesOf(line, periodIndex)].sort((a, b) => dateOf(a).localeCompare(dateOf(b)))
     const total = sum(entries.map((entry) => entry.value))
     const value = line.values[periodIndex] ?? 0

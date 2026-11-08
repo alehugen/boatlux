@@ -116,10 +116,10 @@ export function xlsxFile(
 const SUMIFS = `IF($B$1="Competência",SUMIFS('Fluxo de Caixa'!$L:$L,'Fluxo de Caixa'!$D:$D,$A:$A),SUMIFS('Fluxo de Caixa'!$L:$L,'Fluxo de Caixa'!$P:$P,$B$2))`
 
 /**
- * Uma DRE no formato da Boat Lux: seletores "Caixa / BANCO A" no topo, contas somadas do fluxo de caixa
- * (SOMASES) e totais por fórmula. Os valores são os de Caixa / BANCO A.
+ * Uma DRE no formato da Boatlux: seletores "Caixa / Repasse" no topo, contas somadas do fluxo de caixa
+ * (SOMASES) e totais por fórmula. Os valores são os de Caixa / Repasse.
  */
-export function basisDre(selector = ['Caixa', 'BANCO A']): { rows: string[][]; formulas: Map<string, string> } {
+export function basisDre(selector = ['Caixa', 'Repasse']): { rows: string[][]; formulas: Map<string, string> } {
   type Line = [label: string, jan: number, feb: number, formula: (col: string) => string]
   const lines: (Line | null)[] = [
     ['RECEITA OPERACIONAL BRUTA', 100, 30, (c) => `SUM(${c}6:${c}7)`],
@@ -155,13 +155,13 @@ export function basisDre(selector = ['Caixa', 'BANCO A']): { rows: string[][]; f
 }
 
 export const BASIS_LEDGER_ROWS: string[][] = [
-  ['DATA DE EMISSÃO', 'CATEGORIA', 'VALOR', 'DATA PAGTO', 'BANCO'],
-  ['2026-01-10', 'Vendas', '100', '2026-01-15', 'BANCO A'],
-  ['2026-01-20', 'Vendas', '50', '2026-02-05', 'BANCO B'],
-  ['2026-02-01', 'Serviços', '30', '2026-02-10', 'BANCO A'],
-  ['2026-01-01', 'Aluguel', '-40', '2026-01-05', 'BANCO A'],
+  ['DATA DE EMISSÃO', 'CATEGORIA', 'VALOR', 'DATA PAGTO', 'UNIDADE'],
+  ['2026-01-10', 'Vendas', '100', '2026-01-15', 'Repasse'],
+  ['2026-01-20', 'Vendas', '50', '2026-02-05', 'Comercial'],
+  ['2026-02-01', 'Serviços', '30', '2026-02-10', 'Repasse'],
+  ['2026-01-01', 'Aluguel', '-40', '2026-01-05', 'Repasse'],
   ['2026-02-01', 'Aluguel', '-40', '', ''],
-  ['', 'Saldo inicial', '10', '2026-01-01', 'BANCO A'],
+  ['', 'Saldo inicial', '10', '2026-01-01', 'Repasse'],
 ]
 
 export const DEBT_ROWS: string[][] = [
@@ -183,12 +183,12 @@ export const STOCK_ROWS: string[][] = [
   ['', '545000'],
 ]
 
-/** A planilha completa da Boat Lux: DRE com fórmulas, fluxo de caixa, dívidas e estoque. */
+/** A planilha completa da Boatlux: DRE com fórmulas, fluxo de caixa, dívidas e estoque. */
 export function boatluxFile(): File {
   const dre = basisDre()
   return xlsxFile(
     'Fechamento 2026.xlsx',
-    { 'Fluxo de Caixa': BASIS_LEDGER_ROWS, 'DRE Geral': dre.rows, 'Dívidas  ': DEBT_ROWS, Estoque: STOCK_ROWS },
-    { 'DRE Geral': dre.formulas },
+    { 'Fluxo de Caixa': BASIS_LEDGER_ROWS, 'DRE Unidades': dre.rows, 'Dívidas  ': DEBT_ROWS, Estoque: STOCK_ROWS },
+    { 'DRE Unidades': dre.formulas },
   )
 }

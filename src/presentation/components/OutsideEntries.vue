@@ -15,7 +15,11 @@ const REASONS: Record<OutsideReason, { title: string; fix: string }> = {
   },
   'unknown-category': {
     title: 'Categoria fora da DRE',
-    fix: 'A categoria não é o nome de nenhuma conta da DRE Geral (maiúsculas não importam, acentos e espaços sim).',
+    fix: 'A categoria não é o nome de nenhuma conta da DRE Unidades (maiúsculas não importam, acentos e espaços sim).',
+  },
+  'no-unit': {
+    title: 'Sem unidade',
+    fix: 'O lançamento não tem unidade (coluna Unidade vazia), então não entra na DRE de nenhuma unidade, só em "Todas as unidades". Confira a unidade da classificação na aba Lista.',
   },
   'no-issue-date': {
     title: 'Sem data de emissão',

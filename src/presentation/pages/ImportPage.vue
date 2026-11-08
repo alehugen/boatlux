@@ -29,7 +29,7 @@ const opened = computed(() => {
     <div class="max-w-3xl pt-8">
       <h1 class="text-[2.45rem] leading-tight">Importe o fechamento financeiro</h1>
       <p class="mt-3 max-w-[60ch] text-lg leading-relaxed text-band-muted">
-        Arraste a planilha de fechamento da Boat Lux. Ela abre direto no resultado do último mês encerrado.
+        Arraste a planilha de fechamento da Boatlux. Ela abre direto no resultado do último mês encerrado.
       </p>
     </div>
 

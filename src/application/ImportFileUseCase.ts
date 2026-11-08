@@ -2,7 +2,7 @@ import { DreReport } from '@/domain/dre'
 import { SourceFile, type FileParser, type RawTable } from '@/domain/ingestion'
 import { DomainError } from '@/domain/shared'
 
-/** Importa a planilha da Boat Lux e monta a DRE. */
+/** Importa a planilha da Boatlux e monta a DRE. */
 export class ImportFileUseCase {
   private readonly parser: FileParser
   private readonly now: () => Date

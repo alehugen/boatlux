@@ -28,7 +28,7 @@ afterEach(() => vi.restoreAllMocks())
 describe('useReport', () => {
   it('abre a planilha importada e a substitui na próxima importação', async () => {
     const { importFile, report, error, isImporting } = useReport()
-    const first = await importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
+    const first = await importFile(xlsxFile('DRE.xlsx', { 'DRE Unidades': dreRows() }))
     expect(report.value).toBe(first)
     expect(report.value?.name).toBe('DRE')
 
@@ -40,7 +40,7 @@ describe('useReport', () => {
 
   it('mantém a planilha aberta e mostra o erro quando a importação falha', async () => {
     const { importFile, report, error, clearError } = useReport()
-    await importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
+    await importFile(xlsxFile('DRE.xlsx', { 'DRE Unidades': dreRows() }))
     expect(await importFile(new File([], 'vazio.xlsx'))).toBeNull()
     expect(error.value).toBe('O arquivo está vazio: vazio.xlsx')
     expect(report.value?.name).toBe('DRE')
@@ -50,7 +50,7 @@ describe('useReport', () => {
 
   it('ignora uma nova importação enquanto outra está em andamento', async () => {
     const { importFile, report } = useReport()
-    const first = importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
+    const first = importFile(xlsxFile('DRE.xlsx', { 'DRE Unidades': dreRows() }))
     expect(await importFile(boatluxFile())).toBeNull()
     await first
     expect(report.value?.name).toBe('DRE')
@@ -65,7 +65,7 @@ describe('useReport', () => {
 
 describe('useDreAnalysis', () => {
   it('começa pelo mês mais recente e permite trocar o período', async () => {
-    await useReport().importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
+    await useReport().importFile(xlsxFile('DRE.xlsx', { 'DRE Unidades': dreRows() }))
 
     const { selections, selectedKey, analysis, periodLabels, insights } = useDreAnalysis()
     expect(selections.value.map((s) => s.label)).toEqual(['mar/26', 'fev/26', 'jan/26', 'Acumulado 2026'])
@@ -90,15 +90,15 @@ describe('useDreAnalysis', () => {
   it('troca o regime e volta ao da planilha ao importar outra', async () => {
     await useReport().importFile(boatluxFile())
     const { basis, setBasis, report } = useDreAnalysis()
-    expect(basis.value).toEqual({ regime: 'cash', bank: 'BANCO A' })
+    expect(basis.value).toEqual({ regime: 'cash', unit: 'Repasse' })
 
-    setBasis({ regime: 'accrual', bank: null })
+    setBasis({ regime: 'accrual', unit: null })
     await nextTick()
     expect(report.value?.basis.regime).toBe('accrual')
 
     await useReport().importFile(boatluxFile())
     await nextTick()
-    expect(basis.value).toEqual({ regime: 'cash', bank: 'BANCO A' })
+    expect(basis.value).toEqual({ regime: 'cash', unit: 'Repasse' })
   })
 
   it('fica vazio sem planilha importada', () => {

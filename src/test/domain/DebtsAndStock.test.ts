@@ -70,7 +70,7 @@ describe('readStock', () => {
 describe('DreReport com dívidas e estoque', () => {
   it('junta as abas de dívidas e de estoque à DRE', () => {
     const report = DreReport.fromWorkbook([
-        { sheet: 'DRE Geral', rows: dreRows() },
+        { sheet: 'DRE Unidades', rows: dreRows() },
         { sheet: 'Dívidas', rows: DEBT_ROWS },
         { sheet: 'Estoque', rows: STOCK_ROWS },
       ], { name: 'DRE', asOf: NOVEMBER })
@@ -79,7 +79,7 @@ describe('DreReport com dívidas e estoque', () => {
   })
 
   it('fica sem dívidas e estoque quando a planilha não tem essas abas', () => {
-    const report = DreReport.fromWorkbook([{ sheet: 'DRE Geral', rows: dreRows() }], { name: 'DRE', asOf: NOVEMBER })
+    const report = DreReport.fromWorkbook([{ sheet: 'DRE Unidades', rows: dreRows() }], { name: 'DRE', asOf: NOVEMBER })
     expect(report.debts).toBeNull()
     expect(report.stock).toBeNull()
   })

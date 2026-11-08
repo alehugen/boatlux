@@ -26,7 +26,7 @@ afterEach(() => vi.restoreAllMocks())
 
 describe('DrePage', () => {
   async function mountDre() {
-    await useReport().importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
+    await useReport().importFile(xlsxFile('DRE.xlsx', { 'DRE Unidades': dreRows() }))
     const page = mountWithProviders(DrePage, {
       global: { stubs },
     })
@@ -116,7 +116,7 @@ describe('DrePage', () => {
 })
 
 
-describe('DrePage com a planilha da Boat Lux', () => {
+describe('DrePage com a planilha da Boatlux', () => {
   async function mountBoatlux() {
     await useReport().importFile(boatluxFile())
     const page = mountWithProviders(DrePage, {
@@ -136,21 +136,21 @@ describe('DrePage com a planilha da Boat Lux', () => {
     const page = await mountBoatlux()
     const basis = page.getComponent(BasisSelect)
     expect(page.get('section.bg-band').element.contains(basis.element)).toBe(true)
-    expect(basis.props('basis')).toEqual({ regime: 'cash', bank: 'BANCO A' })
-    expect(basis.props('banks')).toEqual(['BANCO A', 'BANCO B'])
-    expect(page.get('#dre-completa').text()).toContain('Caixa, BANCO A')
+    expect(basis.props('basis')).toEqual({ regime: 'cash', unit: 'Repasse' })
+    expect(basis.props('units')).toEqual(['Comercial', 'Repasse'])
+    expect(page.get('#dre-completa').text()).toContain('Caixa, Repasse')
   })
 
   it('recalcula a DRE ao trocar o banco e o regime, mantendo o mês escolhido', async () => {
     const page = await mountBoatlux()
     expect(page.getComponent(PeriodSelect).props('modelValue')).toBe('m:2026-02')
 
-    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'cash', bank: null })
+    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'cash', unit: null })
     await flushPromises()
     expect(tableLine(page, 'RECEITA OPERACIONAL BRUTA')).toEqual([100, 80])
-    expect(page.get('#dre-completa').text()).toContain('Caixa, todas as contas')
+    expect(page.get('#dre-completa').text()).toContain('Caixa, todas as unidades')
 
-    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'accrual', bank: null })
+    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'accrual', unit: null })
     await flushPromises()
     expect(tableLine(page, 'RESULTADO LÍQUIDO (EBITDA)')).toEqual([110, -10])
     expect(page.getComponent(PeriodSelect).props('modelValue')).toBe('m:2026-02')
@@ -171,9 +171,9 @@ describe('DrePage com a planilha da Boat Lux', () => {
 
     const docked = page.findAllComponents(BasisSelect).find((select) => select.props('compact'))!
     expect(page.findAllComponents(PeriodSelect).filter((select) => select.props('compact'))).toHaveLength(1)
-    docked.vm.$emit('change', { regime: 'cash', bank: 'BANCO B' })
+    docked.vm.$emit('change', { regime: 'cash', unit: 'Comercial' })
     await flushPromises()
-    expect(page.findAllComponents(BasisSelect).every((select) => select.props('basis').bank === 'BANCO B')).toBe(true)
+    expect(page.findAllComponents(BasisSelect).every((select) => select.props('basis').unit === 'Comercial')).toBe(true)
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
   })
 
@@ -192,7 +192,7 @@ describe('DrePage com a planilha da Boat Lux', () => {
   })
 })
 
-describe('DrePage: avisos da planilha da Boat Lux', () => {
+describe('DrePage: avisos da planilha da Boatlux', () => {
   async function mountBoatlux() {
     await useReport().importFile(boatluxFile())
     const page = mountWithProviders(DrePage, { global: { stubs } })
@@ -200,22 +200,29 @@ describe('DrePage: avisos da planilha da Boat Lux', () => {
     return page
   }
 
-  it('aponta o mês em que o saldo inicial não continua o saldo final anterior', async () => {
+  it('numa unidade, não mostra saldo de caixa (o saldo inicial é da empresa toda)', async () => {
     const page = await mountBoatlux()
+    expect(page.find('#caixa').exists()).toBe(false)
+    expect(page.findAllComponents(StatCard).map((card) => card.props('label'))).not.toContain('Saldo de caixa')
+  })
+
+  it('com todas as unidades, aponta o mês em que o saldo inicial não continua o saldo final anterior', async () => {
+    const page = await mountBoatlux()
+    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'cash', unit: null })
+    await flushPromises()
     expect(page.get('#caixa').text()).toMatch(/O saldo inicial de fev\/26 está\s*R\$\s?70,00\s*abaixo do saldo final de jan\/26\./)
   })
 
   it('na competência, não mostra saldo de caixa e aponta o que fica de fora', async () => {
     const page = await mountBoatlux()
-    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'accrual', bank: null })
+    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'accrual', unit: null })
     page.getComponent(PeriodSelect).vm.$emit('update:modelValue', 'y:2026')
     await flushPromises()
 
     const labels = page.findAllComponents(StatCard).map((card) => card.props('label'))
     expect(labels).not.toContain('Saldo de caixa')
     expect(page.find('#caixa').exists()).toBe(false)
-    expect(page.getComponent(OutsideEntries).props('groups')).toEqual([
-      { reason: 'no-issue-date', label: 'Sem data de emissão', count: 1, total: 10 },
-    ])
+    // O único lançamento sem data de emissão é de saldo inicial, que não é resultado: nada fica de fora.
+    expect(page.findComponent(OutsideEntries).exists()).toBe(false)
   })
 })

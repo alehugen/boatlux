@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DRE_LINES, dreRows } from '@/test/fixtures'
 import { DreLineKind, DreMetric, DreReport } from '@/domain/dre'
 
-const table = (rows = dreRows(), sheet = 'DRE Geral') => ({ sheet, rows })
+const table = (rows = dreRows(), sheet = 'DRE Unidades') => ({ sheet, rows })
 const parse = (rows = dreRows()) => DreReport.fromTable(table(rows))!
 
 describe('DreReport.fromTable', () => {
@@ -82,16 +82,16 @@ describe('DreReport.valueOf', () => {
 })
 
 describe('DreReport.fromWorkbook', () => {
-  it('usa a aba "DRE Geral", mesmo com outras DREs na planilha', () => {
+  it('usa a aba "DRE Unidades", mesmo com outras DREs na planilha', () => {
     const other = dreRows({ lines: [['RECEITA OPERACIONAL BRUTA', 0, 1, 1, 1], ['Única', 0, 1, 1, 1]] })
-    const report = DreReport.fromWorkbook([table(other, 'DRE Unidades'), table(dreRows(), 'DFC  DRE Geral')], { name: 'Fechamento' })
+    const report = DreReport.fromWorkbook([table(other, 'DRE Geral'), table(dreRows(), 'DFC  DRE Unidades')], { name: 'Fechamento' })
     expect(report.name).toBe('Fechamento')
     expect(report.metric(DreMetric.GrossRevenue)?.values).toEqual([1000, 1200, 900])
   })
 
-  it('recusa planilhas sem a aba "DRE Geral" ou sem a estrutura da DRE', () => {
-    expect(() => DreReport.fromWorkbook([table(dreRows(), 'DRE Unidades')], { name: 'x' })).toThrow('Não encontramos a aba "DRE Geral"')
-    expect(() => DreReport.fromWorkbook([table([['Item', 'Valor']], 'DRE Geral')], { name: 'x' })).toThrow(/linha dos meses/)
+  it('recusa planilhas sem a aba "DRE Unidades" ou sem a estrutura da DRE', () => {
+    expect(() => DreReport.fromWorkbook([table(dreRows(), 'DRE Geral')], { name: 'x' })).toThrow('Não encontramos a aba "DRE Unidades"')
+    expect(() => DreReport.fromWorkbook([table([['Item', 'Valor']], 'DRE Unidades')], { name: 'x' })).toThrow(/linha dos meses/)
   })
 })
 
@@ -111,13 +111,13 @@ describe('DreReport: cabeçalho de meses', () => {
   it('escolhe a linha com mais meses, ignorando números soltos acima de um ano', () => {
     const rows = dreRows()
     rows.unshift(['', '7'], ['Relatório gerado em', '2026'])
-    const report = DreReport.fromTable({ sheet: 'DRE Geral', rows })!
+    const report = DreReport.fromTable({ sheet: 'DRE Unidades', rows })!
     expect(report.periods).toHaveLength(3)
     expect(report.periods[0]).toEqual({ year: 2026, month: 1 })
   })
 
   it('só considera meses já encerrados e registra os ignorados', () => {
-    const report = DreReport.fromTable({ sheet: 'DRE Geral', rows: dreRows() }, new Date(2026, 2, 15))!
+    const report = DreReport.fromTable({ sheet: 'DRE Unidades', rows: dreRows() }, new Date(2026, 2, 15))!
     expect(report.periods).toEqual([
       { year: 2026, month: 1 },
       { year: 2026, month: 2 },
@@ -127,7 +127,7 @@ describe('DreReport: cabeçalho de meses', () => {
   })
 
   it('explica quando a DRE só tem meses em aberto', () => {
-    expect(() => DreReport.fromWorkbook([{ sheet: 'DRE Geral', rows: dreRows() }], { name: 'DRE', asOf: new Date(2026, 0, 20) })).toThrow(
+    expect(() => DreReport.fromWorkbook([{ sheet: 'DRE Unidades', rows: dreRows() }], { name: 'DRE', asOf: new Date(2026, 0, 20) })).toThrow(
       'A DRE só tem meses que ainda não terminaram.',
     )
   })

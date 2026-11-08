@@ -7,7 +7,7 @@ import { boatluxFile } from '@/test/fixtures'
 describe('XlsxFileParser', () => {
   it('lê as fórmulas de cada célula, nas mesmas posições das linhas', async () => {
     const tables = await new XlsxFileParser().parse(SourceFile.fromFile(boatluxFile()))
-    const dre = tables.find((table) => table.sheet === 'DRE Geral')!
+    const dre = tables.find((table) => table.sheet === 'DRE Unidades')!
     expect(dre.rows[4]![0]).toBe('RECEITA OPERACIONAL BRUTA')
     expect(dre.formulas?.get(cellKey(4, 2))).toBe('SUM(C6:C7)')
     expect(dre.formulas?.get(cellKey(5, 3))).toContain('SUMIFS')
@@ -35,7 +35,7 @@ describe('XlsxFileParser com Web Worker', () => {
   it('lê no worker e encerra o worker ao terminar', async () => {
     const worker = fakeWorker((content) => ({ tables: readWorkbook(content) }))
     const tables = await new XlsxFileParser(() => worker as unknown as Worker).parse(SourceFile.fromFile(boatluxFile()))
-    expect(tables.map((table) => table.sheet)).toContain('DRE Geral')
+    expect(tables.map((table) => table.sheet)).toContain('DRE Unidades')
     expect(worker.terminated).toBe(true)
   })
 

@@ -24,7 +24,7 @@ onMounted(finishPageLoading)
         :class="scrolled && 'shadow-floating'"
       >
         <nav class="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
-          <RouterLink :to="{ name: 'import' }" class="rounded-sm" aria-label="Boat Lux, página inicial">
+          <RouterLink :to="{ name: 'import' }" class="rounded-sm" aria-label="Boatlux, página inicial">
             <img src="/brand/logo-white.png" alt="" width="133" height="36" class="h-9 w-auto" />
           </RouterLink>
           <ThemeToggle />

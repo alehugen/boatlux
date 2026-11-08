@@ -7,7 +7,7 @@ import { buildDreInsights } from '@/presentation/composables/useDreAnalysis'
 const titles = (insights: readonly { title: string }[]) => insights.map((i) => i.title)
 
 describe('buildDreInsights', () => {
-  const report = DreReport.fromTable({ sheet: 'DRE Geral', rows: dreRows() })!
+  const report = DreReport.fromTable({ sheet: 'DRE Unidades', rows: dreRows() })!
   const analysis = new AnalyzeDreUseCase().execute(report, { type: 'month', index: 2 })
   const insights = buildDreInsights(report, analysis, { previous: 'fev/26', window: 'até mar/26', when: 'em mar/26' })
 
@@ -44,7 +44,7 @@ describe('buildDreInsights', () => {
 
 
 describe('textos com números fora do comum', () => {
-  const report = DreReport.fromTable({ sheet: 'DRE Geral', rows: dreRows() })!
+  const report = DreReport.fromTable({ sheet: 'DRE Unidades', rows: dreRows() })!
   const base = new AnalyzeDreUseCase().execute(report, { type: 'year', year: 2026 })
   const labels = { previous: '', window: 'de 2026', when: 'no acumulado de 2026' }
   const describe_ = (facts: Partial<typeof base.facts>, title: string) =>

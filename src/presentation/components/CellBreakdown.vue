@@ -2,7 +2,7 @@
 import { PhCheckCircle, PhWarning } from '@phosphor-icons/vue'
 import { computed } from 'vue'
 import type { CellBreakdown } from '@/application'
-import type { LedgerEntry } from '@/domain/dre'
+import { dateInRegime, type LedgerEntry } from '@/domain/dre'
 import SortableHead from '@/presentation/components/SortableHead.vue'
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/presentation/components/ui/table'
 import { useTableSort } from '@/presentation/composables/useTableSort'
@@ -15,8 +15,10 @@ const matches = computed(() => Math.abs(props.breakdown.difference) <= ROUNDING)
 const largest = computed(() => Math.max(...props.breakdown.accounts.map((account) => Math.abs(account.total)), 1))
 
 const accrual = computed(() => props.breakdown.basis.regime === 'accrual')
-const dateOf = (entry: LedgerEntry) => (accrual.value ? entry.issueDate : entry.date)
-const showBank = computed(() => !props.breakdown.basis.bank && props.breakdown.entries.some((entry) => entry.bank))
+const dateOf = (entry: LedgerEntry) => dateInRegime(entry, props.breakdown.basis.regime)
+/** Com uma unidade escolhida, a coluna Unidade só repetiria o filtro. */
+const showUnit = computed(() => props.breakdown.basis.unit === null)
+const showBank = computed(() => props.breakdown.entries.some((entry) => entry.bank))
 
 const entrySort = useTableSort(() => props.breakdown.entries, {
   date: dateOf,
@@ -101,7 +103,7 @@ const formatDate = (date: string) => {
               <SortableHead :sort="entrySort" column="date">{{ accrual ? 'Emissão' : 'Pagamento' }}</SortableHead>
               <SortableHead :sort="entrySort" column="description">Histórico</SortableHead>
               <SortableHead v-if="breakdown.accounts.length > 1" :sort="entrySort" column="category">Conta</SortableHead>
-              <SortableHead :sort="entrySort" column="unit">Unidade</SortableHead>
+              <SortableHead v-if="showUnit" :sort="entrySort" column="unit">Unidade</SortableHead>
               <SortableHead v-if="showBank" :sort="entrySort" column="bank">Banco</SortableHead>
               <SortableHead :sort="entrySort" column="value" align="right">Valor</SortableHead>
             </TableRow>
@@ -111,7 +113,7 @@ const formatDate = (date: string) => {
               <TableCell class="px-3 figure whitespace-nowrap">{{ formatDate(dateOf(entry)) || '–' }}</TableCell>
               <TableCell class="max-w-80 px-3 whitespace-normal">{{ entry.description || '–' }}</TableCell>
               <TableCell v-if="breakdown.accounts.length > 1" class="px-3">{{ prettifyLabel(entry.category) }}</TableCell>
-              <TableCell class="px-3 text-muted-foreground">{{ entry.unit || '–' }}</TableCell>
+              <TableCell v-if="showUnit" class="px-3 text-muted-foreground">{{ entry.unit || '–' }}</TableCell>
               <TableCell v-if="showBank" class="px-3 text-muted-foreground whitespace-nowrap">{{ entry.bank || '–' }}</TableCell>
               <TableCell class="px-3 text-right figure whitespace-nowrap" :class="entry.value < 0 && 'text-destructive'">
                 {{ formatCurrency(entry.value) }}

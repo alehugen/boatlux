@@ -41,8 +41,8 @@ const { report, basis, setBasis, selections, selectedKey, analysis, periodLabels
 /** Rótulo curto do regime, para a barra fixa e o subtítulo da página. */
 const basisLabel = computed(() => {
   if (!report.value?.canChangeBasis) return ''
-  if (basis.value.regime === DreRegime.Accrual) return 'Competência'
-  return `Caixa, ${basis.value.bank ?? 'todas as contas'}`
+  const regime = basis.value.regime === DreRegime.Accrual ? 'Competência' : 'Caixa'
+  return `${regime}, ${basis.value.unit ?? 'todas as unidades'}`
 })
 
 const ALL_REVENUE = 'all'
@@ -163,7 +163,7 @@ const expenseItems = computed(() =>
           <p class="mt-1 truncate text-sm text-band-muted">{{ report.name }}</p>
         </div>
         <div class="flex flex-wrap items-end gap-3">
-          <BasisSelect v-if="report.canChangeBasis" :basis="basis" :banks="report.banks" @change="setBasis" />
+          <BasisSelect v-if="report.canChangeBasis" :basis="basis" :units="report.units" @change="setBasis" />
           <PeriodSelect v-model="selectedKey" :groups="periodGroups" />
         </div>
       </div>
@@ -206,7 +206,7 @@ const expenseItems = computed(() =>
           <!-- Os mesmos filtros do topo: regime, conta e período continuam à mão ao rolar. -->
           <div class="-mx-4 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:flex-none lg:overflow-visible lg:px-0">
             <PeriodSelect v-model="selectedKey" :groups="periodGroups" compact class="shrink-0" />
-            <BasisSelect v-if="report.canChangeBasis" :basis="basis" :banks="report.banks" compact class="shrink-0" @change="setBasis" />
+            <BasisSelect v-if="report.canChangeBasis" :basis="basis" :units="report.units" compact class="shrink-0" @change="setBasis" />
           </div>
         </div>
       </div>
@@ -306,7 +306,7 @@ const expenseItems = computed(() =>
       <PageSection id="dre-completa" class="space-y-5">
         <SectionHeading title="DRE completa" :subtitle="basisLabel || undefined" />
         <p v-if="report.staticLines.length" class="surface border-l-4 border-l-primary px-4 py-3 text-sm text-body">
-          Valor digitado na planilha, que não muda com o regime nem com a conta:
+          Valor digitado na planilha, que não muda com o regime nem com a unidade:
           <span class="text-foreground">{{ report.staticLines.map(prettifyLabel).join(', ') }}</span>.
         </p>
         <DreTable :report="report" :highlight="analysis.indexes" />

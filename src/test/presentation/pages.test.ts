@@ -30,7 +30,7 @@ describe('rotas', () => {
     await router.push('/dre')
     expect(router.currentRoute.value.name).toBe('import')
 
-    await useReport().importFile(xlsxFile('DRE.xlsx', { 'DRE Geral': dreRows() }))
+    await useReport().importFile(xlsxFile('DRE.xlsx', { 'DRE Unidades': dreRows() }))
     await router.push('/dre')
     expect(router.currentRoute.value.name).toBe('dre')
   })
@@ -53,7 +53,7 @@ describe('ImportPage', () => {
 
   it('abre direto a DRE quando a planilha é importada sem erros', async () => {
     const { page, router } = await mountImport()
-    page.getComponent(FileDropzone).vm.$emit('select', xlsxFile('DRE 2026.xlsx', { 'DRE Geral': dreRows() }))
+    page.getComponent(FileDropzone).vm.$emit('select', xlsxFile('DRE 2026.xlsx', { 'DRE Unidades': dreRows() }))
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('dre'))
   })
 
@@ -71,7 +71,7 @@ describe('ImportPage', () => {
   })
 
   it('com uma planilha aberta, oferece voltar para a DRE', async () => {
-    await useReport().importFile(xlsxFile('DRE 2026.xlsx', { 'DRE Geral': dreRows() }))
+    await useReport().importFile(xlsxFile('DRE 2026.xlsx', { 'DRE Unidades': dreRows() }))
     const { page } = await mountImport()
     expect(page.text()).toContain('Planilha aberta: DRE 2026, jan/26 a mar/26')
     expect(page.findComponent(RouterLinkStub).props('to')).toEqual({ name: 'dre' })

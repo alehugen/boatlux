@@ -329,7 +329,7 @@ describe('InsightList', () => {
 })
 
 describe('DreTable', () => {
-  const report = DreReport.fromTable({ sheet: 'DRE Geral', rows: dreRows() })!
+  const report = DreReport.fromTable({ sheet: 'DRE Unidades', rows: dreRows() })!
   const mountTable = () => mountWithProviders(DreTable, { props: { report, highlight: [2] } })
   const rowLabels = (wrapper: ReturnType<typeof mountTable>) => wrapper.findAll('tbody th').map((th) => th.text())
 
@@ -431,7 +431,7 @@ describe('DreTable', () => {
 
   it('abre os lançamentos que compõem um valor ao clicar', async () => {
     const withLedger = DreReport.fromWorkbook([
-      { sheet: 'DRE Geral', rows: dreRows() },
+      { sheet: 'DRE Unidades', rows: dreRows() },
       { sheet: 'Fluxo de Caixa', rows: LEDGER_ROWS },
     ], { name: 'DRE' })
     const wrapper = mountWithProviders(DreTable, { props: { report: withLedger, highlight: [2] } })
@@ -458,7 +458,7 @@ describe('DreTable', () => {
 
   it('abre em tela cheia e, dali, o detalhe de um valor fecha sem fechar a tabela', async () => {
     const withLedger = DreReport.fromWorkbook([
-      { sheet: 'DRE Geral', rows: dreRows() },
+      { sheet: 'DRE Unidades', rows: dreRows() },
       { sheet: 'Fluxo de Caixa', rows: LEDGER_ROWS },
     ], { name: 'DRE' })
     const host = document.body.appendChild(document.createElement('div'))
@@ -515,7 +515,7 @@ describe('CellBreakdown', () => {
   const breakdown = {
     label: 'DESPESAS OPERACIONAIS',
     period: { year: 2026, month: 3 },
-    basis: { regime: 'cash' as const, bank: null },
+    basis: { regime: 'cash' as const, unit: null },
     value: -700,
     total: -600,
     difference: -100,
@@ -555,7 +555,7 @@ describe('CellBreakdown', () => {
   it('na competência, mostra a data de emissão e o banco de cada lançamento', () => {
     const accrual = {
       ...breakdown,
-      basis: { regime: 'accrual' as const, bank: null },
+      basis: { regime: 'accrual' as const, unit: null },
       entries: breakdown.entries.map((item, i) => ({ ...item, bank: i ? 'Sicredi' : '' })),
     }
     const wrapper = mount(CellBreakdown, { props: { breakdown: accrual } })
@@ -573,31 +573,27 @@ describe('CellBreakdown', () => {
 })
 
 describe('BasisSelect', () => {
-  const mountWith = (basis: { regime: 'cash' | 'accrual'; bank: string | null }) =>
-    mount(BasisSelect, { props: { basis, banks: ['01 - SANTANDER', '02 - SICREDI'] } })
+  const mountWith = (basis: { regime: 'cash' | 'accrual'; unit: string | null }) =>
+    mount(BasisSelect, { props: { basis, units: ['Comercial', 'GC', 'Repasse'] } })
 
-  it('troca o banco no regime de caixa e volta para todas as contas', () => {
-    const wrapper = mountWith({ regime: 'cash', bank: null })
-    const [, bank] = wrapper.findAllComponents(Select)
-    expect(bank!.props('modelValue')).toBe('*')
-    bank!.vm.$emit('update:modelValue', '02 - SICREDI')
-    bank!.vm.$emit('update:modelValue', '*')
-    expect(wrapper.emitted('change')).toEqual([[{ regime: 'cash', bank: '02 - SICREDI' }], [{ regime: 'cash', bank: null }]])
+  it('troca a unidade e volta para todas as unidades, mantendo o regime', () => {
+    const wrapper = mountWith({ regime: 'accrual', unit: null })
+    const [, unit] = wrapper.findAllComponents(Select)
+    expect(unit!.props('modelValue')).toBe('*')
+    expect(unit!.props('disabled')).toBeFalsy()
+    unit!.vm.$emit('update:modelValue', 'GC')
+    unit!.vm.$emit('update:modelValue', '*')
+    expect(wrapper.emitted('change')).toEqual([[{ regime: 'accrual', unit: 'GC' }], [{ regime: 'accrual', unit: null }]])
   })
 
-  it('na competência, soma todas as contas e trava o banco', () => {
-    const wrapper = mountWith({ regime: 'cash', bank: '01 - SANTANDER' })
+  it('troca o regime mantendo a unidade, como na planilha', () => {
+    const wrapper = mountWith({ regime: 'cash', unit: 'Repasse' })
     wrapper.findAllComponents(Select)[0]!.vm.$emit('update:modelValue', 'accrual')
-    expect(wrapper.emitted('change')).toEqual([[{ regime: 'accrual', bank: null }]])
-
-    const accrual = mountWith({ regime: 'accrual', bank: null })
-    const bank = accrual.findAllComponents(Select)[1]!
-    expect(bank.props('modelValue')).toBe('*')
-    expect(bank.props('disabled')).toBe(true)
+    expect(wrapper.emitted('change')).toEqual([[{ regime: 'accrual', unit: 'Repasse' }]])
   })
 
-  it('esconde o banco quando o fluxo de caixa não informa bancos', () => {
-    const wrapper = mount(BasisSelect, { props: { basis: { regime: 'cash', bank: null }, banks: [] } })
+  it('esconde a unidade quando o fluxo de caixa não informa unidades', () => {
+    const wrapper = mount(BasisSelect, { props: { basis: { regime: 'cash', unit: null }, units: [] } })
     expect(wrapper.findAllComponents(Select)).toHaveLength(1)
   })
 })
@@ -795,5 +791,36 @@ describe('TrendChart', () => {
     const shown = categories.map((_, i) => i).filter((i) => interval(i))
     expect(shown).toContain(4)
     expect(shown.length).toBeLessThan(categories.length)
+  })
+})
+
+describe('CellBreakdown com unidade escolhida', () => {
+  it('não repete a coluna Unidade, que só diria o filtro', () => {
+    const breakdown = {
+      label: 'Vendas',
+      period: { year: 2026, month: 2 },
+      basis: { regime: 'cash' as const, unit: 'Repasse' },
+      value: 10,
+      total: 10,
+      difference: 0,
+      entries: [
+        {
+          date: '2026-02-02',
+          issueDate: '',
+          description: 'Venda',
+          category: 'Vendas',
+          account: '',
+          unit: 'Repasse',
+          bank: '',
+          value: 10,
+          cashPeriod: { year: 2026, month: 2 },
+          accrualPeriod: null,
+        },
+      ],
+      accounts: [{ label: 'Vendas', total: 10, count: 1 }],
+    }
+    const headers = mount(CellBreakdown, { props: { breakdown } }).findAll('thead th').map((th) => th.text())
+    expect(headers).not.toContain('Unidade')
+    expect(headers).not.toContain('Banco')
   })
 })

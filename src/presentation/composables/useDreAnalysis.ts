@@ -52,7 +52,7 @@ const selectionKey = (s: DreSelection, periods: readonly Period[]) =>
 export function useDreAnalysis() {
   const { report: imported } = useReport()
 
-  /** Regime (caixa ou competência) e banco: começa no que estava escolhido na planilha. */
+  /** Regime (caixa ou competência) e unidade: começa no que estava escolhido na planilha. */
   const basis = ref<DreBasis>(imported.value?.basis ?? DEFAULT_BASIS)
   watch(imported, (current) => (basis.value = current?.basis ?? DEFAULT_BASIS))
   const setBasis = (next: DreBasis) => {

@@ -7,7 +7,7 @@ import InfoTip from './InfoTip.vue'
 
 const props = defineProps<{ stock: Stock }>()
 
-/** Na Boat Lux, as embarcações começam com J (jet ski) ou L (lancha). */
+/** Na Boatlux, as embarcações começam com J (jet ski) ou L (lancha). */
 const KINDS: Record<string, string> = { J: 'Jet ski', L: 'Lancha' }
 const kindOf = (label: string) => KINDS[label.trim().charAt(0).toUpperCase()] ?? null
 

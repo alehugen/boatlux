@@ -54,7 +54,7 @@ describe('readLedger', () => {
 
 describe('DreReport com lançamentos', () => {
   const report = DreReport.fromWorkbook([
-    { sheet: 'DRE Geral', rows: dreRows() },
+    { sheet: 'DRE Unidades', rows: dreRows() },
     ledgerTable(LEDGER_ROWS),
   ], { name: 'DRE' })
   const line = (label: string) => report.lines.find((candidate) => candidate.label === label)!
@@ -81,7 +81,7 @@ describe('DreReport com lançamentos', () => {
   })
 
   it('funciona sem aba de lançamentos', () => {
-    expect(DreReport.fromWorkbook([{ sheet: 'DRE Geral', rows: dreRows() }], { name: 'DRE' }).ledger).toEqual([])
+    expect(DreReport.fromWorkbook([{ sheet: 'DRE Unidades', rows: dreRows() }], { name: 'DRE' }).ledger).toEqual([])
   })
 })
 
@@ -108,7 +108,7 @@ describe('datas dos lançamentos', () => {
 describe('contas com o mesmo nome em grupos diferentes', () => {
   const lines = DRE_LINES.map((line) => (line?.[0] === 'Salários' ? (['Aluguel', ...line.slice(1)] as typeof line) : line))
   const report = DreReport.fromWorkbook([
-    { sheet: 'DRE Geral', rows: dreRows({ lines }) },
+    { sheet: 'DRE Unidades', rows: dreRows({ lines }) },
     ledgerTable(LEDGER_ROWS),
   ], { name: 'DRE' })
   const groups = report.lines.filter((line) => line.kind === DreLineKind.Group && line.label.startsWith('DESPESAS'))
