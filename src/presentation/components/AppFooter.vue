@@ -10,7 +10,7 @@ const LINKEDIN_URL = 'https://www.linkedin.com/in/alehugen'
       class="mx-auto flex max-w-7xl flex-col items-start gap-3 px-4 py-6 sm:px-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
     >
       <p>
-        <span class="font-bold text-foreground">Boat <span class="text-marker-ink">Lux</span></span>
+        <span class="text-foreground">Boatlux</span>
         processa a planilha só no navegador.
       </p>
       <p class="flex items-center gap-1">
