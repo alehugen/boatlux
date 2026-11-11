@@ -108,7 +108,7 @@ const navSections = computed<NavSection[]>(() => {
     { id: 'custos', label: 'Custos e receita' },
     !!a.monthly.cash && { id: 'caixa', label: 'Saldo de caixa' },
     { id: 'dre-completa', label: 'DRE completa' },
-    !!(r.debts || r.stock) && { id: 'dividas-estoque', label: r.debts && r.stock ? 'Dívidas e estoque' : r.debts ? 'Dívidas' : 'Estoque' },
+    !!(r.debts || r.stock) && { id: 'dividas-estoque', label: positionTitle.value },
   ]
   return sections.filter((section): section is NavSection => !!section)
 })
@@ -137,11 +137,21 @@ const mixSeries = computed(() =>
   })),
 )
 
+/** Dívidas, estoque ou os dois, conforme as abas que a planilha tem. */
+const positionTitle = computed(() => {
+  const r = report.value
+  return r?.debts && r.stock ? 'Dívidas e estoque' : r?.debts ? 'Dívidas' : 'Estoque'
+})
+const positionSource = computed(() => {
+  const r = report.value
+  return r?.debts && r.stock ? 'das abas de dívidas e de estoque da planilha' : `da aba de ${r?.debts ? 'dívidas' : 'estoque'} da planilha`
+})
+
 const expenseItems = computed(() =>
   (analysis.value?.expenses ?? []).slice(0, 10).map((e) => ({
     label: prettifyLabel(e.label),
     value: e.value,
-    detail: `${formatPercent(e.share)} da receita`,
+    detail: e.share === null ? 'sem receita no período' : `${formatPercent(e.share)} da receita`,
   })),
 )
 </script>
@@ -320,7 +330,7 @@ const expenseItems = computed(() =>
       </PageSection>
 
       <PageSection v-if="report.debts || report.stock" id="dividas-estoque" class="space-y-5">
-        <SectionHeading title="Dívidas e estoque" subtitle="Posição atual, das abas de dívidas e de estoque da planilha" />
+        <SectionHeading :title="positionTitle" :subtitle="`Posição atual, ${positionSource}`" />
         <div class="grid items-start gap-5 xl:grid-cols-2">
           <DebtsCard v-if="report.debts" :schedule="report.debts" />
           <StockCard v-if="report.stock" :stock="report.stock" />

@@ -72,10 +72,15 @@ describe('useReport', () => {
     expect(error.value).toBe('Antiga.xlsx e Fechamento 2026.xlsx são da mesma operação (Boatlux): ficou Fechamento 2026.xlsx.')
   })
 
-  it('explica erros inesperados', async () => {
-    vi.spyOn(container.importFile, 'execute').mockRejectedValueOnce('falhou')
+  it('troca falhas inesperadas por uma explicação em português e registra o erro no console', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(container.importFile, 'execute').mockRejectedValueOnce(new TypeError('x is undefined'))
     await useReport().importFile(new File(['x'], 'DRE.xlsx'))
-    expect(useReport().error.value).toBe('Erro inesperado ao importar DRE.xlsx')
+    expect(useReport().error.value).toBe(
+      'Não foi possível montar a DRE de DRE.xlsx. Confira se é a planilha de fechamento da Boatlux ou da RS Náutica.',
+    )
+    expect(log).toHaveBeenCalled()
+    log.mockRestore()
   })
 })
 

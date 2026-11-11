@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { PhWarning } from '@phosphor-icons/vue'
 import { computed } from 'vue'
-import { BOATLUX_LAYOUT, type DreLayout, type OutsideGroup, type OutsideReason } from '@/domain/dre'
+import { type DreLayout, type OutsideGroup, type OutsideReason } from '@/domain/dre'
 import { sum } from '@/domain/shared'
 import { formatCurrency, formatCurrencyCompact } from '@/presentation/format'
 
 /** Lançamentos do fluxo de caixa que a DRE deixa de fora, com o motivo, para corrigir na planilha. */
-const props = withDefaults(defineProps<{ groups: readonly OutsideGroup[]; when: string; layout?: DreLayout }>(), {
-  layout: () => BOATLUX_LAYOUT,
-})
+const props = defineProps<{ groups: readonly OutsideGroup[]; when: string; layout: DreLayout }>()
 
 const reasonsFor = ({ sheet, segment }: DreLayout): Record<OutsideReason, { title: string; fix: string }> => ({
   'no-category': {

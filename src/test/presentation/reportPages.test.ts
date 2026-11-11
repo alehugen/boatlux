@@ -14,6 +14,8 @@ import StatCard from '@/presentation/components/StatCard.vue'
 import { useReport } from '@/presentation/composables/useReport'
 import DrePage from '@/presentation/pages/DrePage.vue'
 import { boatluxFile, dreRows, rsFile, xlsxFile } from '@/test/fixtures'
+import { createMemoryHistory, createRouter } from 'vue-router'
+import { routes } from '@/presentation/router'
 import { mountWithProviders } from './mountWithProviders'
 
 const stubs = {
@@ -264,7 +266,9 @@ describe('DrePage com a planilha da RS Náutica', () => {
 describe('CompanySwitch', () => {
   it('só aparece com as duas operações abertas e troca a que está na tela', async () => {
     await useReport().importFile(boatluxFile())
-    const wrapper = mountWithProviders(CompanySwitch)
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/')
+    const wrapper = mountWithProviders(CompanySwitch, { global: { plugins: [router] } })
     expect(wrapper.find('button').exists()).toBe(false)
 
     await useReport().importFile(rsFile())
@@ -277,5 +281,7 @@ describe('CompanySwitch', () => {
     await buttons()[0]!.trigger('click')
     expect(useReport().report.value?.layout.id).toBe('boatlux')
     expect(buttons()[0]!.attributes('aria-pressed')).toBe('true')
+    // Fora da DRE, escolher uma operação abre a DRE dela.
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('dre'))
   })
 })

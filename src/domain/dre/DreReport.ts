@@ -306,9 +306,10 @@ export class DreReport {
       const unitless = !segmentOf(entry, this.segment)
       if (!unitless && !inUnit(entry, this.basis, this.segment)) continue
 
-      // Na competência, quem não tem data de emissão é situado pelo mês do pagamento.
+      // Na competência, quem não tem data de emissão é situado pelo mês do pagamento. Na RS não: caixa e
+      // competência são lançamentos separados, e os de caixa não têm mês de competência de propósito.
       const month = periodInRegime(entry, this.basis.regime)
-      if (!inPeriods(month ?? (accrual ? entry.cashPeriod : null))) continue
+      if (!inPeriods(month ?? (accrual && this.segment.inAccrual ? entry.cashPeriod : null))) continue
 
       // Da causa mais de raiz para a mais simples: corrigir só a de baixo não traz o lançamento para a DRE.
       if (!entry.category) add('no-category', entry.account || 'Sem classificação', entry.value)
@@ -487,7 +488,6 @@ function buildModel(
 
 const cents = (value: number) => Math.round(value * 100) / 100
 
-/** Lançamentos de saldo (ex.: "Saldo inicial") registram o caixa, não resultado. */
 /** Unidades (ou bancos) do fluxo de caixa, sem repetir variações de maiúsculas e espaços ("Repasse" e "REPASSE "). */
 function uniqueUnits(ledger: readonly LedgerEntry[], segment: DreSegment): string[] {
   const byKey = new Map<string, string>()

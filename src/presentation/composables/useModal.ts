@@ -1,5 +1,6 @@
 import { useEventListener } from '@vueuse/core'
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { prefersReducedMotion } from '@/presentation/motion'
 
 export const MODAL_CLOSE_DURATION = 260
 
@@ -37,8 +38,6 @@ function unlockPage(id: symbol) {
   document.body.style.overflow = pageOverflow
   setAppInert(false)
 }
-
-const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
 export function useModal(options: ModalOptions) {
   const id = Symbol('modal')

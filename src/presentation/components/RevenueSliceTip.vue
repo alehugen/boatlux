@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { formatCurrencyWhole, prettifyLabel } from '@/presentation/format'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/presentation/components/ui/tooltip'
 
@@ -13,11 +14,14 @@ export interface SliceDetail {
 }
 
 defineProps<{ detail: SliceDetail }>()
+
+/** Abre também com toque e clique, para funcionar no celular. */
+const open = ref(false)
 </script>
 
 <template>
-  <Tooltip>
-    <TooltipTrigger as-child>
+  <Tooltip v-model:open="open" disable-closing-trigger>
+    <TooltipTrigger as-child @click="open = !open">
       <slot />
     </TooltipTrigger>
     <TooltipContent side="top" :side-offset="8" class="block w-80 max-w-[calc(100vw-2rem)] p-0 text-left text-sm shadow-floating ring-1 ring-band-border">
@@ -29,7 +33,7 @@ defineProps<{ detail: SliceDetail }>()
         <p class="text-xs leading-relaxed opacity-75">{{ detail.how }}</p>
       </div>
       <dl v-if="detail.parts.length" class="space-y-1 border-t border-background/15 px-3.5 py-2.5 text-xs">
-        <div v-for="part in detail.parts" :key="part.label" class="flex justify-between gap-3">
+        <div v-for="(part, i) in detail.parts" :key="i" class="flex justify-between gap-3">
           <dt class="min-w-0 truncate opacity-80">{{ prettifyLabel(part.label) }}</dt>
           <dd class="figure whitespace-nowrap">{{ formatCurrencyWhole(-part.value) }}</dd>
         </div>

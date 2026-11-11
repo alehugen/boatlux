@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { PhUploadSimple } from '@phosphor-icons/vue'
-import { computed, ref } from 'vue'
+import { useEventListener } from '@vueuse/core'
+import { computed, ref, watch } from 'vue'
 import { MAX_FILE_SIZE_MB, SUPPORTED_EXTENSIONS } from '@/domain/ingestion'
 
-defineProps<{ disabled?: boolean }>()
+const props = defineProps<{ disabled?: boolean }>()
 /** Aceita várias planilhas de uma vez (ex.: a da Boatlux e a da RS Náutica). */
 const emit = defineEmits<{ select: [files: File[]] }>()
 
@@ -11,6 +12,12 @@ const dragDepth = ref(0)
 const isDragging = computed(() => dragDepth.value > 0)
 const accept = SUPPORTED_EXTENSIONS.join(',')
 const extensions = SUPPORTED_EXTENSIONS.join(' ou ')
+
+// Durante a importação a área não recebe eventos: ao terminar, não pode ficar presa em "Solte para importar".
+watch(() => props.disabled, () => (dragDepth.value = 0))
+// Arquivo solto fora da área (ou nela, durante a importação): o navegador não deve abrir nem baixar.
+useEventListener(window, 'dragover', (event: DragEvent) => event.preventDefault())
+useEventListener(window, 'drop', (event: DragEvent) => event.preventDefault())
 
 function onDrop(event: DragEvent) {
   dragDepth.value = 0

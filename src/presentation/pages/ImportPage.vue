@@ -11,7 +11,11 @@ import { formatPeriod } from '@/presentation/format'
 
 const router = useRouter()
 const { companies, isImporting, error, importFiles, selectCompany, clearError } = useReport()
-onBeforeUnmount(clearError)
+let left = false
+onBeforeUnmount(() => {
+  left = true
+  clearError()
+})
 
 /**
  * Planilhas importadas sem erro abrem direto na DRE (da primeira delas; o seletor do cabeçalho troca de operação).
@@ -19,6 +23,8 @@ onBeforeUnmount(clearError)
  */
 async function onSelect(files: File[]) {
   const imported = await importFiles(files)
+  // Saiu da página durante a importação: não puxa de volta nem deixa o erro para a próxima visita.
+  if (left) return clearError()
   if (imported.length && !error.value) await router.push({ name: 'dre' })
 }
 

@@ -3,7 +3,8 @@
  * - `ledger`: soma os lançamentos do fluxo de caixa com a categoria da linha (SOMASES);
  * - `sum`: combina outras linhas da DRE (SOMA de intervalos, + e −);
  * - `blank`: linha sem fórmula e sem valor (fica zerada);
- * - `fixed`: valor digitado ou fórmula desconhecida (mantém o valor da planilha).
+ * - `fixed`: valor digitado ou fórmula desconhecida (mantém o valor da planilha). Uma SOMASES com sinal, fator
+ *   ou somada a outra coisa (`-SUMIFS(...)`, `SUMIFS(...)*-1`) também fica fixa: o recálculo não a reproduziria.
  */
 export type LineRecipe =
   | { readonly type: 'ledger' }
@@ -11,7 +12,32 @@ export type LineRecipe =
   | { readonly type: 'blank' }
   | { readonly type: 'fixed' }
 
-const LEDGER_FUNCTIONS = /\b(SUMIFS?|SOMASES?)\s*\(/i
+const LEDGER_FUNCTION = /\b(SUMIFS?|SOMASES?)\s*\(/i
+
+/**
+ * A fórmula só busca no fluxo de caixa: cada SOMASES aparece sozinha, no máximo dentro de um SE que escolhe
+ * entre elas (é o caso das planilhas da Boatlux e da RS), sem conta antes ou depois.
+ */
+function isPlainLedger(formula: string): boolean {
+  // Troca cada SOMASES(...) por "S" (respeitando parênteses e textos) e olha o que sobra em volta.
+  let shape = ''
+  let at = 0
+  for (const match of formula.matchAll(new RegExp(LEDGER_FUNCTION.source, 'gi'))) {
+    if (match.index < at) continue
+    let depth = 0
+    let end = match.index + match[0].length - 1
+    for (; end < formula.length; end++) {
+      if (formula[end] === '"') end = formula.indexOf('"', end + 1)
+      if (end === -1) return false
+      if (formula[end] === '(') depth++
+      else if (formula[end] === ')' && --depth === 0) break
+    }
+    shape += `${formula.slice(at, match.index)}S`
+    at = end + 1
+  }
+  shape = `${shape}${formula.slice(at)}`.replace(/"[^"]*"/g, '""')
+  return !/[-+*/^&]\s*S\b|\bS\s*[-+*/^&]/.test(shape)
+}
 
 /** Letras da coluna (0 → A, 27 → AB). */
 export function columnLetters(index: number): string {
@@ -26,7 +52,7 @@ export function columnLetters(index: number): string {
  */
 export function parseLineFormula(formula: string | undefined, column: number, hasValue: boolean): LineRecipe {
   if (!formula?.trim()) return hasValue ? { type: 'fixed' } : { type: 'blank' }
-  if (LEDGER_FUNCTIONS.test(formula)) return { type: 'ledger' }
+  if (LEDGER_FUNCTION.test(formula)) return isPlainLedger(formula.replace(/^=/, '')) ? { type: 'ledger' } : { type: 'fixed' }
   const parsed = new SumParser(formula.replace(/^=/, ''), columnLetters(column)).parse()
   return parsed ? { type: 'sum', ...parsed } : { type: 'fixed' }
 }
@@ -79,7 +105,7 @@ class SumParser {
       return result
     }
     const number = /^\d+(\.\d+)?/.exec(this.rest())
-    if (number && !/^[A-Z]/.test(this.rest())) {
+    if (number) {
       this.position += number[0].length
       return { terms: [], constant: Number(number[0]) }
     }

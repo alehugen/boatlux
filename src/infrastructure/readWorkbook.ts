@@ -9,8 +9,10 @@ export function readWorkbook(content: ArrayBuffer): RawTable[] {
     const sheet = workbook.Sheets[sheetName]
     if (!sheet) return []
 
+    const range = usedRange(sheet)
+    if (!range) return []
     const rows = utils
-      .sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: '', blankrows: true })
+      .sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: '', blankrows: true, range })
       .map((row) => row.map(toCellText))
 
     if (!rows.some((row) => row.some(Boolean))) return []
@@ -18,16 +20,33 @@ export function readWorkbook(content: ArrayBuffer): RawTable[] {
   })
 }
 
-/** Fórmulas por célula, nas posições relativas ao início da área usada (as mesmas de `rows`). */
+const cellAddresses = (sheet: WorkSheet) => Object.keys(sheet).filter((address) => !address.startsWith('!'))
+
+/**
+ * De A1 até a última célula preenchida. Começa sempre em A1 para linhas e colunas baterem com as referências
+ * das fórmulas (C5 é a linha 4, coluna 2), mesmo quando a planilha começa mais abaixo. E termina na última
+ * célula de verdade, não no "!ref" do arquivo, que formatação em linhas vazias pode inflar até a linha 1 milhão.
+ */
+function usedRange(sheet: WorkSheet) {
+  const addresses = cellAddresses(sheet)
+  if (!addresses.length) return null
+  const end = { r: 0, c: 0 }
+  for (const address of addresses) {
+    const { r, c } = utils.decode_cell(address)
+    end.r = Math.max(end.r, r)
+    end.c = Math.max(end.c, c)
+  }
+  return { s: { r: 0, c: 0 }, e: end }
+}
+
+/** Fórmulas por célula, nas mesmas posições de `rows` (a partir de A1). */
 function formulasOf(sheet: WorkSheet): Map<string, string> {
   const formulas = new Map<string, string>()
-  const ref = sheet['!ref']
-  if (!ref) return formulas
-  const start = utils.decode_range(ref).s
-  for (const [address, cell] of Object.entries(sheet)) {
-    if (address.startsWith('!') || !cell?.f) continue
+  for (const address of cellAddresses(sheet)) {
+    const formula = sheet[address]?.f
+    if (!formula) continue
     const { r, c } = utils.decode_cell(address)
-    formulas.set(cellKey(r - start.r, c - start.c), String(cell.f))
+    formulas.set(cellKey(r, c), String(formula))
   }
   return formulas
 }

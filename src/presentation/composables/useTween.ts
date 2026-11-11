@@ -1,9 +1,8 @@
 import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { prefersReducedMotion } from '@/presentation/motion'
 
 const easeOutQuint = (t: number) => 1 - (1 - t) ** 5
 
-const prefersReducedMotion = () =>
-  typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
  * Anima uma lista de números até os valores de `source` sempre que eles mudam.

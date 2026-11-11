@@ -52,11 +52,6 @@ describe('StatCard', () => {
     expect(wrapper.getComponent(InfoTip).props('text')).toBe('Como calcula')
   })
 
-  it('pinta como ruim a alta de um indicador em que cair é bom', () => {
-    const wrapper = mount(StatCard, { props: { label: 'Custo', value: '1', delta: 0.2, lowerIsBetter: true } })
-    expect(wrapper.find('.text-destructive').exists()).toBe(true)
-  })
-
   it('omite a variação sem base de comparação', () => {
     const wrapper = mount(StatCard, { props: { label: 'Lucro', value: '1', delta: null } })
     expect(wrapper.text()).not.toContain('%')
@@ -65,11 +60,6 @@ describe('StatCard', () => {
   it('pinta de vermelho um valor negativo', () => {
     const wrapper = mount(StatCard, { props: { label: 'EBITDA', value: '-R$ 19 mil', negative: true } })
     expect(wrapper.get('.text-destructive').text()).toBe('-R$ 19 mil')
-  })
-
-  it('mostra variação de margem em pontos percentuais', () => {
-    const wrapper = mount(StatCard, { props: { label: 'Margem', value: '22%', delta: 0.02, deltaUnit: 'points' } })
-    expect(wrapper.text()).toContain('+2,0 p.p.')
   })
 })
 
@@ -589,7 +579,7 @@ describe('CellBreakdown', () => {
 
 describe('BasisSelect', () => {
   const mountWith = (basis: { regime: 'cash' | 'accrual'; unit: string | null }) =>
-    mount(BasisSelect, { props: { basis, units: ['Comercial', 'GC', 'Repasse'] } })
+    mount(BasisSelect, { props: { basis, units: ['Comercial', 'GC', 'Repasse'], segment: BOATLUX_LAYOUT.segment } })
 
   it('troca a unidade e volta para todas as unidades, mantendo o regime', () => {
     const wrapper = mountWith({ regime: 'accrual', unit: null })
@@ -608,7 +598,7 @@ describe('BasisSelect', () => {
   })
 
   it('esconde a unidade quando o fluxo de caixa não informa unidades', () => {
-    const wrapper = mount(BasisSelect, { props: { basis: { regime: 'cash', unit: null }, units: [] } })
+    const wrapper = mount(BasisSelect, { props: { basis: { regime: 'cash', unit: null }, units: [], segment: BOATLUX_LAYOUT.segment } })
     expect(wrapper.findAllComponents(Select)).toHaveLength(1)
   })
 })
@@ -746,7 +736,7 @@ describe('OutsideEntries', () => {
   ]
 
   it('resume quantos lançamentos ficam de fora e explica cada motivo', () => {
-    const wrapper = mount(OutsideEntries, { props: { groups, when: 'em fev/26' } })
+    const wrapper = mount(OutsideEntries, { props: { groups, when: 'em fev/26', layout: BOATLUX_LAYOUT } })
     expect(wrapper.get('summary').text().replace(/\s/g, ' ')).toContain('93 lançamentos (-R$ 78,9 mil) em fev/26 não entram na DRE.')
     const sections = wrapper.findAll('section')
     expect(sections.map((section) => section.get('h3').text())).toEqual(['Sem categoria', 'Categoria fora da DRE'])
@@ -755,7 +745,7 @@ describe('OutsideEntries', () => {
   })
 
   it('não aparece quando tudo entra na DRE', () => {
-    expect(mount(OutsideEntries, { props: { groups: [], when: 'em fev/26' } }).html()).toBe('<!--v-if-->')
+    expect(mount(OutsideEntries, { props: { groups: [], when: 'em fev/26', layout: BOATLUX_LAYOUT } }).html()).toBe('<!--v-if-->')
   })
 })
 

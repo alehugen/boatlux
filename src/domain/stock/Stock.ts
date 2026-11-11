@@ -63,6 +63,9 @@ const COLUMN_ALIASES = {
 
 const groupOf = (label: string) => label.split(/\s*-\s*/)[0]!.trim() || label.trim()
 
+/** Linha de total ("TOTAL", "Saldo") no fim da lista: não é uma cota. */
+const isTotal = (label: string) => /^(TOTAL|SALDO)\b/.test(normalizeText(label))
+
 /** "L31- 05" e "L31 - 05" são a mesma cota. */
 const quotaKey = (label: string) => normalizeText(label).replace(/\s+/g, '')
 
@@ -103,7 +106,8 @@ function readSold(rows: readonly string[][]): SoldStock | null {
   if (!heading) return null
   const body: string[][] = []
   for (const row of rows.slice(heading.row + 1)) {
-    if (!(row[heading.column] ?? '').trim()) break
+    const label = (row[heading.column] ?? '').trim()
+    if (!label || isTotal(label)) break
     body.push(row)
   }
   const convention = detectNumberConvention(body.map((row) => row[heading.column + 1] ?? ''))
@@ -144,7 +148,7 @@ export function readStock(table: RawTable): Stock | null {
   const items = table.rows.slice(header.rowIndex + 1).flatMap((row): StockItem[] => {
     const label = header.text(row, 'label')
     const value = header.number(row, 'value')
-    return label && value && !soldKeys.has(quotaKey(label)) ? [{ label, group: groupOf(label), value }] : []
+    return label && value && !isTotal(label) && !soldKeys.has(quotaKey(label)) ? [{ label, group: groupOf(label), value }] : []
   })
   if (!items.length && !sold) return null
 

@@ -1,4 +1,5 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { prefersReducedMotion } from '@/presentation/motion'
 
 function onWindowScroll(handler: () => void) {
   let frame = 0
@@ -16,7 +17,6 @@ function onWindowScroll(handler: () => void) {
     cancelAnimationFrame(frame)
   })
 }
-
 export function useScrolled(threshold = 4) {
   const scrolled = ref(false)
   onWindowScroll(() => (scrolled.value = window.scrollY > threshold))
@@ -40,8 +40,6 @@ const SCROLL_LOCK_FALLBACK_MS = 1600
 /** A rolagem suave pode parar alguns pixels antes (visto no celular): conta como chegada. */
 const ARRIVAL_TOLERANCE_PX = 8
 
-const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-
 /**
  * Qual seção está na tela, para destacar no menu: a última cujo topo já chegou à área fixa do topo.
  * A altura dessa área é a mesma que o navegador usa ao pular para a seção: o `scroll-padding-top` da página
@@ -51,6 +49,7 @@ const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion:
 export function useScrollSpy(ids: () => readonly string[]) {
   const activeId = ref<string | null>(null)
   let scrollingTo: string | null = null
+  let stopWaiting = () => {}
 
   const sectionInView = () => {
     const list = ids()
@@ -71,19 +70,26 @@ export function useScrollSpy(ids: () => readonly string[]) {
 
   onWindowScroll(update)
   watch(ids, () => nextTick(update))
+  onBeforeUnmount(() => stopWaiting())
 
   function scrollTo(id: string) {
     const section = document.getElementById(id)
     if (!section) return
+    stopWaiting()
     activeId.value = id
     scrollingTo = id
     const release = () => {
-      if (scrollingTo !== id) return
+      stopWaiting()
       scrollingTo = null
       update()
     }
+    const timer = setTimeout(release, SCROLL_LOCK_FALLBACK_MS)
     window.addEventListener('scrollend', release, { once: true })
-    setTimeout(release, SCROLL_LOCK_FALLBACK_MS)
+    stopWaiting = () => {
+      clearTimeout(timer)
+      window.removeEventListener('scrollend', release)
+      stopWaiting = () => {}
+    }
     section.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
     section.focus({ preventScroll: true })
   }

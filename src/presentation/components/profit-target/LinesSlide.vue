@@ -69,8 +69,8 @@ const rows = computed<DetailRow[]>(() => {
         </TableHeader>
         <TableBody>
           <TableRow
-            v-for="row in rows"
-            :key="row.label"
+            v-for="(row, i) in rows"
+            :key="`${i}-${row.label}`"
             class="*:bg-card"
             :class="[row.total && 'font-semibold', row.purchases && '*:bg-accent']"
           >

@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   escapeHtml,
   formatCurrency,
+  formatCurrencyCompact,
+  formatCurrencyWhole,
   formatPercent,
   formatPeriod,
   formatPeriodList,
   formatPeriodLong,
+  formatSignedCurrency,
   formatSignedPercent,
   prettifyLabel,
 } from '@/presentation/format'
@@ -47,5 +50,16 @@ describe('prettifyLabel', () => {
 describe('escapeHtml', () => {
   it('neutraliza HTML vindo dos arquivos', () => {
     expect(escapeHtml(`<img src=x onerror="alert('1')">&`)).toBe('&lt;img src=x onerror=&quot;alert(&#39;1&#39;)&quot;&gt;&amp;')
+  })
+})
+
+describe('sinal em valores que arredondam para zero', () => {
+  it('não mostra "-R$ 0" nem "-0%", e o "+" só aparece quando o número exibido não é zero', () => {
+    expect(formatCurrencyWhole(-0)).not.toContain('-')
+    expect(formatCurrencyCompact(-0.004)).not.toContain('-')
+    expect(formatPercent(-0.00001)).not.toContain('-')
+    expect(formatSignedPercent(0.00001)).not.toContain('+')
+    expect(formatSignedPercent(0.1)).toMatch(/^\+10/)
+    expect(formatSignedCurrency(0.3)).not.toContain('+')
   })
 })

@@ -103,6 +103,25 @@ describe('datas dos lançamentos', () => {
   it('descarta datas impossíveis', () => {
     expect(entriesWith(['31/13/2026', '00/01/2026', 'ontem'])).toEqual([])
   })
+
+  it('lê datas guardadas como número (célula em formato geral)', () => {
+    expect(entriesWith(['46037']).map((entry) => entry.date)).toEqual(['2026-01-15'])
+  })
+
+  it('ignora o mês 1/1900 que MÊS()/ANO() devolvem para uma célula vazia', () => {
+    const entries = readLedger(
+      ledgerTable([
+        ['CATEGORIA', 'VALOR', 'DATA PAGTO', 'MÊS CX.', 'ANO CX.'],
+        ['Aluguel', '-10', '15/02/2026', '1', '1900'],
+      ]),
+    )!
+    expect(entries[0]!.cashPeriod).toEqual({ year: 2026, month: 2 })
+  })
+
+  it('aceita o fluxo de caixa só com "Valor de movimento"', () => {
+    const entries = readLedger(ledgerTable([['CATEGORIA', 'VALOR DE MOVIMENTO', 'DATA PAGTO'], ['Aluguel', '-10', '15/02/2026']]))
+    expect(entries?.map((entry) => entry.value)).toEqual([-10])
+  })
 })
 
 describe('contas com o mesmo nome em grupos diferentes', () => {

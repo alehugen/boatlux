@@ -42,14 +42,26 @@ const COLUMN_ALIASES = {
 type Column = keyof typeof COLUMN_ALIASES
 
 const isMonth = (month: number) => Number.isInteger(month) && month >= 1 && month <= 12
-const isYear = (year: number) => Number.isInteger(year) && year >= 1900 && year <= 2999
+// 1900 fica de fora: é o que MÊS()/ANO() de uma célula vazia devolvem no Excel (1/1900).
+const isYear = (year: number) => Number.isInteger(year) && year > 1900 && year <= 2999
 const isDay = (day: number) => Number.isInteger(day) && day >= 1 && day <= 31
 const pad = (value: number) => String(value).padStart(2, '0')
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})/
 const BR_DATE = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/
+/** Data guardada como número (célula em formato geral): dias desde 30/12/1899, entre 1954 e 2119. */
+const EXCEL_SERIAL = /^\d{5}(\.\d+)?$/
+const EXCEL_EPOCH = Date.UTC(1899, 11, 30)
+const DAY_MS = 86_400_000
 
-function parseDate(text: string): { iso: string; period: Period } | null {
+function fromSerial(text: string): string | null {
+  const days = Number(text)
+  if (!EXCEL_SERIAL.test(text) || days < 20000 || days > 80000) return null
+  return new Date(EXCEL_EPOCH + Math.floor(days) * DAY_MS).toISOString().slice(0, 10)
+}
+
+function parseDate(raw: string): { iso: string; period: Period } | null {
+  const text = fromSerial(raw.trim()) ?? raw
   const iso = ISO_DATE.exec(text.trim())
   const br = iso ? null : BR_DATE.exec(text.trim())
   const parts = iso ? [iso[1], iso[2], iso[3]] : br ? [br[3], br[2], br[1]] : null
@@ -65,9 +77,10 @@ function parseDate(text: string): { iso: string; period: Period } | null {
  * inclusive as sem categoria, para mostrar o que não entra na DRE.
  */
 export function readLedger(table: RawTable): LedgerEntry[] | null {
-  const header = findTableHeader(table.rows, COLUMN_ALIASES, ['category', 'value', 'paidAt'])
+  const header = findTableHeader(table.rows, COLUMN_ALIASES, ['category', 'paidAt'])
   if (!header) return null
   const has = (...names: Column[]) => names.every((name) => header.columns[name] !== undefined)
+  if (!has('value') && !has('signedValue')) return null
 
   /** "Valor de movimento" já vem com sinal; sem ela, a movimentação diz se é entrada ou saída. */
   const signed = (row: readonly string[]) => {

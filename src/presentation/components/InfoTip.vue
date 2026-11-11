@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { PhInfo } from '@phosphor-icons/vue'
+import { ref } from 'vue'
 import { Button } from '@/presentation/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/presentation/components/ui/tooltip'
 
@@ -7,10 +8,13 @@ withDefaults(defineProps<{ text: string; label?: string; onBand?: boolean }>(), 
   label: 'Como esta informação é calculada',
   onBand: false,
 })
+
+/** Abre também com toque e clique (no celular não há "passar o mouse"); fecha ao tocar fora ou com Esc. */
+const open = ref(false)
 </script>
 
 <template>
-  <Tooltip>
+  <Tooltip v-model:open="open" disable-closing-trigger>
     <TooltipTrigger as-child>
       <Button
         variant="ghost"
@@ -22,7 +26,7 @@ withDefaults(defineProps<{ text: string; label?: string; onBand?: boolean }>(), 
             : 'text-muted-foreground hover:text-foreground',
         ]"
         :aria-label="label"
-        @click.stop.prevent
+        @click.stop.prevent="open = !open"
       >
         <PhInfo weight="bold" aria-hidden="true" />
       </Button>

@@ -2,7 +2,7 @@
 import { PhHandCoins } from '@phosphor-icons/vue'
 import { computed } from 'vue'
 import { debtOverview, type DebtSchedule } from '@/domain/debts'
-import { formatCurrencyCompact, formatCurrencyWhole, formatPercent, formatPeriod, formatPeriodLong } from '@/presentation/format'
+import { formatCurrencyCompact, formatCurrencyWhole, formatIsoDate, formatPercent, formatPeriod, formatPeriodLong } from '@/presentation/format'
 import InfoTip from './InfoTip.vue'
 
 const props = defineProps<{ schedule: DebtSchedule; asOf?: Date }>()
@@ -10,7 +10,6 @@ const props = defineProps<{ schedule: DebtSchedule; asOf?: Date }>()
 const overview = computed(() => debtOverview(props.schedule, props.asOf))
 const largest = computed(() => Math.max(...overview.value.debts.map((debt) => debt.balance), 1))
 
-const formatDate = (iso: string) => iso.split('-').reverse().join('/')
 
 const info = computed(() =>
   [
@@ -36,7 +35,7 @@ const info = computed(() =>
         <p class="text-sm text-muted-foreground">
           {{ schedule.debts.length }} {{ schedule.debts.length === 1 ? 'dívida' : 'dívidas' }} em aberto<template
             v-if="schedule.updatedAt"
-            >, planilha atualizada em {{ formatDate(schedule.updatedAt) }}</template
+            >, planilha atualizada em {{ formatIsoDate(schedule.updatedAt) }}</template
           >
         </p>
       </div>
@@ -60,7 +59,7 @@ const info = computed(() =>
     </dl>
 
     <ul class="mt-6 space-y-4 border-t border-border pt-5">
-      <li v-for="debt in overview.debts" :key="debt.label">
+      <li v-for="(debt, i) in overview.debts" :key="`${i}-${debt.label}`">
         <div class="flex items-baseline justify-between gap-3">
           <span class="min-w-0 truncate text-foreground" :title="debt.label">{{ debt.label }}</span>
           <span class="figure whitespace-nowrap text-foreground">{{ formatCurrencyWhole(debt.balance) }}</span>

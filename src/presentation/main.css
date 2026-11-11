@@ -21,13 +21,6 @@
 @theme {
   --font-sans: 'WeezerFont', 'Century Gothic', ui-sans-serif, system-ui, sans-serif;
 
-  /* Paleta oficial da Boatlux (cores globais do site boatlux.com.br) */
-  --color-brand-navy: #0b4976;
-  --color-brand-deep: #00244f;
-  --color-brand-cyan: #12bff9;
-  --color-brand-sky: #7ec1f3;
-  --color-brand-mist: #f4f8fb;
-
   /* Movimento: saídas rápidas, entradas longas e suaves. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in: cubic-bezier(0.55, 0, 0.75, 0.2);
@@ -293,20 +286,6 @@
   background-color: var(--card);
   color: var(--card-foreground);
   box-shadow: var(--elevation-1);
-}
-
-
-@utility link {
-  color: var(--marker-ink);
-  text-decoration-line: underline;
-  text-decoration-color: color-mix(in oklch, var(--marker-ink) 40%, transparent);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.2em;
-  transition: text-decoration-color var(--duration-base) var(--ease-out);
-
-  &:hover {
-    text-decoration-color: currentColor;
-  }
 }
 
 /*

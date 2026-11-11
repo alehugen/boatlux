@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { utils, write, type WorkSheet } from 'xlsx'
 import { cellKey, SourceFile } from '@/domain/ingestion'
 import { readWorkbook } from '@/infrastructure/readWorkbook'
 import { XlsxFileParser } from '@/infrastructure/XlsxFileParser'
@@ -13,6 +14,21 @@ describe('XlsxFileParser', () => {
     expect(dre.formulas?.get(cellKey(5, 3))).toContain('SUMIFS')
     expect(tables.find((table) => table.sheet === 'Estoque')!.formulas?.size).toBe(0)
   })
+
+  it('conta linhas e colunas a partir de A1 mesmo quando a planilha começa mais abaixo', () => {
+    const sheet: WorkSheet = {
+      B3: { t: 's', v: 'Receita' },
+      C3: { t: 'n', v: 100 },
+      C4: { t: 'n', v: 100, f: 'SUM(C3:C3)' },
+      '!ref': 'B3:C4',
+    }
+    const workbook = utils.book_new()
+    utils.book_append_sheet(workbook, sheet, 'DRE')
+    const [table] = readWorkbook(write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer)
+    expect(table!.rows[2]![1]).toBe('Receita')
+    expect(table!.rows[3]![2]).toBe('100')
+    expect(table!.formulas?.get(cellKey(3, 2))).toBe('SUM(C3:C3)')
+  })
 })
 
 describe('XlsxFileParser com Web Worker', () => {
@@ -20,10 +36,10 @@ describe('XlsxFileParser com Web Worker', () => {
   function fakeWorker(reply: (content: ArrayBuffer) => unknown, fail = false) {
     const worker = {
       onmessage: null as ((event: { data: unknown }) => void) | null,
-      onerror: null as (() => void) | null,
+      onerror: null as ((event: { preventDefault(): void }) => void) | null,
       terminated: false,
       postMessage(content: ArrayBuffer) {
-        queueMicrotask(() => (fail ? worker.onerror?.() : worker.onmessage?.({ data: reply(content) })))
+        queueMicrotask(() => (fail ? worker.onerror?.({ preventDefault() {} }) : worker.onmessage?.({ data: reply(content) })))
       },
       terminate() {
         worker.terminated = true
@@ -39,9 +55,19 @@ describe('XlsxFileParser com Web Worker', () => {
     expect(worker.terminated).toBe(true)
   })
 
-  it('repassa as falhas do worker', async () => {
+  it('repassa o erro da planilha lido no worker', async () => {
     const source = SourceFile.fromFile(boatluxFile())
-    await expect(new XlsxFileParser(() => fakeWorker(() => ({ error: true })) as unknown as Worker).parse(source)).rejects.toThrow()
-    await expect(new XlsxFileParser(() => fakeWorker(() => null, true) as unknown as Worker).parse(source)).rejects.toThrow()
+    const parser = new XlsxFileParser(() => fakeWorker(() => ({ error: 'arquivo inválido' })) as unknown as Worker)
+    await expect(parser.parse(source)).rejects.toThrow('arquivo inválido')
+  })
+
+  it('sem worker disponível (bloqueado ou que não carrega), lê na página', async () => {
+    const source = SourceFile.fromFile(boatluxFile())
+    const broken = new XlsxFileParser(() => fakeWorker(() => null, true) as unknown as Worker)
+    expect((await broken.parse(source)).map((table) => table.sheet)).toContain('DRE Unidades')
+    const blocked = new XlsxFileParser(() => {
+      throw new Error('CSP')
+    })
+    expect((await blocked.parse(source)).map((table) => table.sheet)).toContain('DRE Unidades')
   })
 })

@@ -16,7 +16,6 @@ use([BarChart, GridComponent, TooltipComponent, SVGRenderer])
 export interface RankingItem {
   label: string
   value: number
-  color?: string
   detail?: string
 }
 
@@ -76,7 +75,7 @@ const option = computed<EChartsOption>(() => {
         name: props.valueLabel,
         data: props.items.map((item) => ({
           value: item.value,
-          itemStyle: { color: item.color ?? series[0], borderRadius: [0, 4, 4, 0] },
+          itemStyle: { color: series[0], borderRadius: [0, 4, 4, 0] },
         })),
         barMaxWidth: 18,
         emphasis: { itemStyle: { opacity: 0.85 } },

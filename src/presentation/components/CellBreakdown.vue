@@ -6,7 +6,7 @@ import { dateInRegime, type LedgerEntry } from '@/domain/dre'
 import SortableHead from '@/presentation/components/SortableHead.vue'
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/presentation/components/ui/table'
 import { useTableSort } from '@/presentation/composables/useTableSort'
-import { formatCurrency, formatPercent, prettifyLabel } from '@/presentation/format'
+import { formatCurrency, formatIsoDate, formatPercent, prettifyLabel } from '@/presentation/format'
 
 const props = defineProps<{ breakdown: CellBreakdown }>()
 
@@ -29,11 +29,6 @@ const entrySort = useTableSort(() => props.breakdown.entries, {
   unit: (entry) => entry.unit,
   value: (entry) => entry.value,
 })
-
-const formatDate = (date: string) => {
-  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(date)
-  return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : date
-}
 </script>
 
 <template>
@@ -111,7 +106,7 @@ const formatDate = (date: string) => {
           </TableHeader>
           <TableBody>
             <TableRow v-for="(entry, index) in entrySort.rows" :key="index">
-              <TableCell class="px-3 figure whitespace-nowrap">{{ formatDate(dateOf(entry)) || '–' }}</TableCell>
+              <TableCell class="px-3 figure whitespace-nowrap">{{ formatIsoDate(dateOf(entry)) || '–' }}</TableCell>
               <TableCell class="max-w-80 px-3 whitespace-normal">{{ entry.description || '–' }}</TableCell>
               <TableCell v-if="breakdown.accounts.length > 1" class="px-3">{{ prettifyLabel(entry.category) }}</TableCell>
               <TableCell v-if="showUnit" class="px-3 text-muted-foreground">{{ entry.unit || '–' }}</TableCell>

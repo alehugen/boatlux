@@ -2,7 +2,7 @@
 import { PhSailboat } from '@phosphor-icons/vue'
 import { computed } from 'vue'
 import type { SoldGroup, SoldItem, Stock, StockGroup } from '@/domain/stock'
-import { formatCurrencyCompact, formatCurrencyWhole } from '@/presentation/format'
+import { formatCurrencyCompact, formatCurrencyWhole, joinList } from '@/presentation/format'
 import InfoTip from './InfoTip.vue'
 
 const props = defineProps<{ stock: Stock }>()
@@ -24,8 +24,6 @@ const groups = computed(() => [...props.stock.groups].sort((a, b) => b.total - a
 const largest = computed(() => Math.max(...groups.value.map((group) => group.total), 1))
 
 const quotas = (count: number) => `${count} ${count === 1 ? 'cota' : 'cotas'}`
-const joinList = (items: readonly string[]) =>
-  items.length > 1 ? `${items.slice(0, -1).join(', ')} e ${items.at(-1)}` : (items[0] ?? '')
 
 function range(values: readonly number[]) {
   const min = Math.min(...values)
@@ -133,6 +131,8 @@ const INFO =
         <p class="mt-1 text-sm text-muted-foreground">{{ detail(group) }}</p>
       </li>
     </ul>
+
+    <p v-else class="mt-6 border-t border-border pt-5 text-sm text-muted-foreground">Nenhuma cota disponível no momento.</p>
 
     <section v-if="sold" class="mt-6 border-t border-border pt-5" aria-labelledby="vendidas-titulo">
       <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

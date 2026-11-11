@@ -11,6 +11,17 @@ describe('parseLineFormula', () => {
     expect(parseLineFormula('SOMASES(X:X;Y:Y;A5)', 2, true)).toEqual({ type: 'ledger' })
   })
 
+  it('aceita o SE que escolhe entre buscas, como nas planilhas reais', () => {
+    const chooser = 'IF($B$1="Competência",SUMIFS(X:X,Y:Y,A5),IF(AND($B$1="Caixa",$B$2="TODAS"),SUMIFS(Z:Z,Y:Y,A5),"-"))'
+    expect(parseLineFormula(chooser, 2, true)).toEqual({ type: 'ledger' })
+  })
+
+  it('mantém o valor da planilha quando a busca tem sinal, fator ou outra parcela', () => {
+    for (const formula of ['-SUMIFS(X:X,Y:Y,A5)', 'SUMIFS(X:X,Y:Y,A5)*-1', 'SUMIFS(X:X,Y:Y,A5)+SUMIFS(X:X,Y:Y,A6)', 'SUMIFS(X:X,Y:Y,A5)+C12']) {
+      expect(parseLineFormula(formula, 2, true)).toEqual({ type: 'fixed' })
+    }
+  })
+
   it('lê somas de intervalos e de referências com sinal', () => {
     expect(parseLineFormula('SUM(C6:C8)', 2, true)).toEqual({
       type: 'sum',

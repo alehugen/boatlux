@@ -86,9 +86,9 @@ Os tokens ficam em `src/presentation/main.css` e seguem a identidade do site [bo
 
 | Token | Cor | Papel |
 |---|---|---|
-| `brand-deep` / `band` | `#00244F` | Cabeçalho e faixa "casco" no topo das páginas (igual nos dois temas) |
-| `brand-navy` / `primary` | `#0B4976` | Botões, texto forte e linhas de resultado da DRE (tema claro) |
-| `brand-cyan` / `water` | `#12BFF9` | Período selecionado, o que sobra da receita e linhas de resultado (tema escuro) |
+| `band` | `#00244F` | Cabeçalho e faixa "casco" no topo das páginas (igual nos dois temas) |
+| `primary` | `#0B4976` | Botões, texto forte e linhas de resultado da DRE (tema claro) |
+| `water` | `#12BFF9` | Período selecionado, o que sobra da receita e linhas de resultado (tema escuro) |
 | `brand-sky` | `#7EC1F3` | Azul de apoio |
 | `brand-mist` | `#F4F8FB` | Fundo claro |
 

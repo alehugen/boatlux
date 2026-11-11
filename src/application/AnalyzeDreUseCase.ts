@@ -24,7 +24,8 @@ export interface DreKpi {
 export interface DreExpense {
   readonly label: string
   readonly value: number
-  readonly share: number
+  /** Parte da receita bruta; null sem receita no período. */
+  readonly share: number | null
 }
 
 export type VariableCostKind = 'taxes' | 'purchases' | 'expenses'
@@ -331,13 +332,8 @@ export class AnalyzeDreUseCase {
    * A receita bruta dividida pelas etapas da DRE até o EBITDA. Cada fatia é a diferença entre dois resultados
    * da própria DRE (receita − impostos, − lucro bruto, − margem de contribuição, − EBITDA), então fatias
    * e sobra fecham exatamente com a receita. As linhas de primeiro nível entre esses resultados viram as
-   * partes de cada fatia, para mostrar de onde vem o número.
-   */
-  /**
-   * A receita bruta dividida pelas etapas da DRE até o EBITDA. Cada fatia é a diferença entre dois resultados
-   * da própria DRE (receita − impostos, − lucro bruto, − margem de contribuição, − EBITDA), então fatias
-   * e sobra fecham exatamente com a receita. As linhas de primeiro nível entre esses resultados viram as
-   * partes de cada fatia, para mostrar de onde vem o número.
+   * partes de cada fatia, para mostrar de onde vem o número. Sem como fechar em 100 (o EBITDA passa da receita
+   * ou sobra uma etapa negativa), não há barra.
    */
   private revenueFlow(report: DreReport, indexes: number[], revenue: number): RevenueFlow | null {
     const ebitdaLine = report.metric(DreMetric.Ebitda)
@@ -391,6 +387,7 @@ export class AnalyzeDreUseCase {
     }
 
     const result = value(DreMetric.Ebitda)!
+    if (result > revenue || slices.some((slice) => slice.value < 0)) return null
     return {
       revenue,
       slices: slices.filter((slice) => slice.value > 0).map((slice) => ({ ...slice, share: slice.value / revenue })),
@@ -446,7 +443,7 @@ export class AnalyzeDreUseCase {
       .filter((line, position) => line.kind === DreLineKind.Group && position < limitPosition)
       .map((line) => ({ label: line.label, value: -report.valueOf(line, indexes) }))
       .filter((expense) => expense.value > 0)
-      .map((expense) => ({ ...expense, share: revenue ? expense.value / revenue : 0 }))
+      .map((expense) => ({ ...expense, share: revenue > 0 ? expense.value / revenue : null }))
       .sort((a, b) => b.value - a.value)
   }
 

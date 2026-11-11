@@ -106,7 +106,8 @@ const scrollToHighlight = () => {
   onScroll()
 }
 onMounted(scrollToHighlight)
-watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
+// Pela lista de meses, não pelo array: a análise refeita (outro regime, outra unidade) não deve desfazer a rolagem.
+watch(() => props.highlight.join(), scrollToHighlight, { flush: 'post' })
 </script>
 
 <template>

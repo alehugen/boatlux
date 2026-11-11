@@ -9,7 +9,7 @@ const scope = self as unknown as {
 scope.onmessage = (event) => {
   try {
     scope.postMessage({ tables: readWorkbook(event.data) })
-  } catch {
-    scope.postMessage({ error: true })
+  } catch (error) {
+    scope.postMessage({ error: error instanceof Error ? error.message : String(error) })
   }
 }

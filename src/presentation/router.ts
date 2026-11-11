@@ -24,10 +24,7 @@ export const routes: RouteRecordRaw[] = [
 
 export const router = createRouter({
   history: createWebHistory(),
-  scrollBehavior: (to) =>
-    to.hash
-      ? new Promise((resolve) => setTimeout(() => resolve({ el: to.hash, top: 152, behavior: 'smooth' }), 350))
-      : { top: 0 },
+  scrollBehavior: () => ({ top: 0 }),
   routes,
 })
 

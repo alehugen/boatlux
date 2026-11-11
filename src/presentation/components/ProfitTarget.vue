@@ -34,6 +34,12 @@ const STEPS = ['Resultado', 'Hoje × meta', 'Como calculamos', 'Linha a linha', 
 const step = ref(0)
 const headings = ref<(HTMLElement | null)[]>([])
 
+/** Setas trocam de etapa, mas não dentro de uma tabela ou de um campo: ali elas rolam ou editam. */
+function onArrow(event: KeyboardEvent, delta: number) {
+  if ((event.target as HTMLElement | null)?.closest('table, input, textarea, select, [role="slider"], [role="listbox"]')) return
+  void goTo(step.value + delta)
+}
+
 async function goTo(index: number) {
   if (index === step.value || index < 0 || index >= STEPS.length) return
   step.value = index
@@ -105,8 +111,8 @@ const SLIDE_CLASSES = {
       <div
         class="grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] overflow-hidden"
         :class="expanded ? 'min-h-0 flex-1' : 'max-h-[max(24rem,calc(100dvh-26rem))]'"
-        @keydown.left="goTo(step - 1)"
-        @keydown.right="goTo(step + 1)"
+        @keydown.left="onArrow($event, -1)"
+        @keydown.right="onArrow($event, 1)"
       >
         <section
           v-for="(label, index) in STEPS"

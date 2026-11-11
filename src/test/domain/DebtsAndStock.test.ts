@@ -100,6 +100,12 @@ describe('readStock com a lista de vendidas', () => {
     expect(movementOf(note)).toEqual(movement)
   })
 
+  it('não conta a linha de TOTAL como cota', () => {
+    const own = readStock({ sheet: 'Estoque', rows: [...STOCK_ROWS.slice(0, -1), ['TOTAL', '545000']] })!
+    expect(own.total).toBe(545000)
+    expect(own.groups.map((group) => group.label)).not.toContain('TOTAL')
+  })
+
   it('sem lista de vendidas, sold fica vazio', () => {
     expect(readStock({ sheet: 'Estoque', rows: STOCK_ROWS })!.sold).toBeNull()
   })

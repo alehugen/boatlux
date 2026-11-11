@@ -131,6 +131,11 @@ describe('DreReport: modelo da RS Náutica', () => {
     expect(values(accrual, DreMetric.GrossRevenue)?.[0]).toBe(90)
   })
 
+  it('na competência, os lançamentos de caixa (sem mês de competência) não aparecem como "sem data de emissão"', () => {
+    const accrual = rs().withBasis({ regime: 'accrual', unit: null })
+    expect(accrual.outsideEntries([0, 1]).map((group) => group.reason)).not.toContain('no-issue-date')
+  })
+
   it('o saldo de caixa é o "Saldo final" depois do "Saldo inicial", não o "SALDO FINAL" do resultado', () => {
     const report = rs()
     const ending = report.metric(DreMetric.EndingCash)!

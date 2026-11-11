@@ -47,7 +47,7 @@ export const DRE_METRIC_INFO: Record<DreMetric, string> = {
 }
 
 const selectionKey = (s: DreSelection, periods: readonly Period[]) =>
-  s.type === 'month' ? `m:${periods[s.index] ? periodKey(periods[s.index]!) : s.index}` : `y:${s.year}`
+  s.type === 'month' ? `m:${periodKey(periods[s.index]!)}` : `y:${s.year}`
 
 export function useDreAnalysis() {
   const { report: imported } = useReport()
@@ -67,7 +67,10 @@ export function useDreAnalysis() {
     selections,
     (options) => {
       if (!options.some((o) => selectionKey(o, periodsOf()) === selectedKey.value)) {
-        selectedKey.value = options[0] ? selectionKey(options[0], periodsOf()) : ''
+        // Sem a opção escolhida (outra unidade ou operação), fica no mesmo tipo, mês ou ano, quando houver.
+        const sameType = options.find((o) => selectedKey.value.startsWith(o.type === 'month' ? 'm:' : 'y:'))
+        const next = sameType ?? options[0]
+        selectedKey.value = next ? selectionKey(next, periodsOf()) : ''
       }
     },
     { immediate: true },
@@ -135,22 +138,26 @@ export function buildDreInsights(
   const window = `${months} meses ${labels.window}`
 
   if (facts.revenueChange !== null && labels.previous) {
-    const up = facts.revenueChange >= 0
+    // Abaixo de meio ponto, o percentual arredonda para 0%: a receita ficou estável.
+    const stable = Math.abs(facts.revenueChange) < 0.005
+    const up = facts.revenueChange > 0
     items.push({
-      title: up ? 'Receita em alta' : 'Receita em queda',
-      description: `A receita bruta ${up ? 'cresceu' : 'caiu'} ${formatPercent(Math.abs(facts.revenueChange))} em relação a ${labels.previous}.`,
-      tone: up ? 'positive' : 'negative',
+      title: stable ? 'Receita estável' : up ? 'Receita em alta' : 'Receita em queda',
+      description: stable
+        ? `A receita bruta ficou praticamente igual à de ${labels.previous}.`
+        : `A receita bruta ${up ? 'cresceu' : 'caiu'} ${formatPercent(Math.abs(facts.revenueChange))} em relação a ${labels.previous}.`,
+      tone: stable ? 'neutral' : up ? 'positive' : 'negative',
       explanation: `(Receita bruta do período − receita bruta de ${labels.previous}) ÷ receita bruta de ${labels.previous}. No acumulado do ano, compara com os mesmos meses do ano anterior.`,
     })
   }
 
   const ebitda = kpi(DreMetric.Ebitda)
   if (ebitda) {
-    const positive = ebitda.value >= 0
+    const tone = Math.round(ebitda.value) > 0 ? 'positive' : Math.round(ebitda.value) < 0 ? 'negative' : 'neutral'
     items.push({
-      title: positive ? 'Operação lucrativa' : 'Operação no prejuízo',
+      title: { positive: 'Operação lucrativa', negative: 'Operação no prejuízo', neutral: 'Operação sem resultado' }[tone],
       description: `EBITDA de ${formatCurrencyCompact(ebitda.value)} ${labels.when}${ebitda.margin !== null ? `, margem de ${formatPercent(ebitda.margin)}` : ''}.`,
-      tone: positive ? 'positive' : 'negative',
+      tone,
       explanation: 'EBITDA é o resultado da operação antes de itens não desembolsáveis e movimentações não operacionais. Margem EBITDA = EBITDA ÷ receita bruta. Positivo indica operação lucrativa no período.',
     })
   }
@@ -165,10 +172,14 @@ export function buildDreInsights(
     })
   }
 
-  if (facts.topExpense) {
+  const top = facts.topExpense
+  if (top) {
     items.push({
       title: 'Maior peso nos custos',
-      description: `${prettifyLabel(facts.topExpense.label)}: ${formatPercent(facts.topExpense.share)} da receita${facts.topExpense.share > 1 ? ', mais do que tudo o que foi vendido' : ''}.`,
+      description:
+        top.share === null
+          ? `${prettifyLabel(top.label)}: ${formatCurrencyCompact(top.value)}, sem receita no período.`
+          : `${prettifyLabel(top.label)}: ${formatPercent(top.share)} da receita${top.share > 1 ? ', mais do que tudo o que foi vendido' : ''}.`,
       tone: 'neutral',
       explanation: 'Entre os grupos de custos e despesas anteriores ao EBITDA, o de maior valor no período, dividido pela receita bruta.',
     })
@@ -217,7 +228,9 @@ export function buildDreInsights(
     const positive = facts.averageContributionMargin >= 0
     items.push({
       title: 'Margem de contribuição média',
-      description: positive
+      description: per100 === 0
+        ? `${formatPercent(facts.averageContributionMargin)} nos ${window}: os custos variáveis consomem praticamente toda a receita.`
+        : positive
         ? `${formatPercent(facts.averageContributionMargin)} nos ${window}: de cada R$ 100 vendidos, sobram R$ ${per100} para pagar as despesas fixas.`
         : `${formatPercent(facts.averageContributionMargin)} nos ${window}: de cada R$ 100 vendidos, os custos variáveis passam R$ ${per100} da receita e não sobra nada para as despesas fixas.`,
       tone: positive ? 'neutral' : 'negative',

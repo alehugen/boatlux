@@ -136,6 +136,7 @@ const delayOf = (index: number, base = 0) => (staggered.value ? `${base + index 
       <RevenueSliceTip v-for="(segment, index) in segments" :key="segment.key" :detail="segment.detail">
         <div
           tabindex="0"
+          role="img"
           :aria-label="`${segment.label}: ${segment.per100} de cada R$ 100. Ver de onde vem o valor`"
           class="h-full min-w-0 basis-0 cursor-help outline-none transition-[flex-grow,filter] duration-(--duration-slower) ease-(--ease-out) first:rounded-l-md last:rounded-r-md hover:brightness-115 focus-visible:ring-2 focus-visible:ring-band-foreground data-[state$=open]:brightness-115"
           :class="segment.color"

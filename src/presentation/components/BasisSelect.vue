@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { PhBank, PhScales, PhStorefront } from '@phosphor-icons/vue'
 import { computed, useId } from 'vue'
-import { BOATLUX_LAYOUT, DreRegime, type DreBasis, type DreSegment } from '@/domain/dre'
+import { DreRegime, type DreBasis, type DreSegment } from '@/domain/dre'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/ui/select'
 
 /**
@@ -13,11 +13,12 @@ const props = withDefaults(
   defineProps<{
     basis: DreBasis
     units: readonly string[]
-    segment?: DreSegment
+    /** Unidade (Boatlux) ou banco (RS Náutica): vem do modelo da planilha. */
+    segment: DreSegment
     compact?: boolean
     tone?: 'band' | 'surface'
   }>(),
-  { segment: () => BOATLUX_LAYOUT.segment, compact: false, tone: 'band' },
+  { compact: false, tone: 'band' },
 )
 const emit = defineEmits<{ change: [basis: DreBasis] }>()
 
