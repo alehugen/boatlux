@@ -26,7 +26,7 @@ export const router = createRouter({
   history: createWebHistory(),
   scrollBehavior: (to) =>
     to.hash
-      ? new Promise((resolve) => setTimeout(() => resolve({ el: to.hash, top: 88, behavior: 'smooth' }), 350))
+      ? new Promise((resolve) => setTimeout(() => resolve({ el: to.hash, top: 152, behavior: 'smooth' }), 350))
       : { top: 0 },
   routes,
 })

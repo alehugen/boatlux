@@ -34,13 +34,18 @@ export function useScrolledPast(target: () => HTMLElement | null | undefined, of
   return past
 }
 
-const SCROLL_LOCK_FALLBACK_MS = 900
+/** Sem o evento scrollend, libera o destaque depois deste tempo (rolagens longas passam de 1 s). */
+const SCROLL_LOCK_FALLBACK_MS = 1600
+
+/** A rolagem suave pode parar alguns pixels antes (visto no celular): conta como chegada. */
+const ARRIVAL_TOLERANCE_PX = 8
 
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
 /**
  * Qual seção está na tela, para destacar no menu: a última cujo topo já chegou à área fixa do topo.
- * A altura dessa área é a margem de rolagem da própria seção (`scroll-margin-top`), a mesma usada ao pular para ela.
+ * A altura dessa área é a mesma que o navegador usa ao pular para a seção: o `scroll-padding-top` da página
+ * (cabeçalho e barra fixa) mais o `scroll-margin-top` da seção.
  * Ao clicar no menu, a seção escolhida fica destacada até a rolagem terminar.
  */
 export function useScrollSpy(ids: () => readonly string[]) {
@@ -51,11 +56,12 @@ export function useScrollSpy(ids: () => readonly string[]) {
     const list = ids()
     const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
     if (atBottom && window.scrollY > 0) return list.at(-1) ?? null
+    const padding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0
     return list.reduce<string | null>((current, id) => {
       const section = document.getElementById(id)
       if (!section) return current
       const margin = parseFloat(getComputedStyle(section).scrollMarginTop) || 0
-      return section.getBoundingClientRect().top - margin <= 1 ? id : current
+      return section.getBoundingClientRect().top - padding - margin <= ARRIVAL_TOLERANCE_PX ? id : current
     }, list[0] ?? null)
   }
 

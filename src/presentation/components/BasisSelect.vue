@@ -73,7 +73,7 @@ const trigger = computed(() => [
         <SelectTrigger
           :aria-labelledby="unitId"
           :title="segmentOff ? SEGMENT_OFF_HINT : undefined"
-          :class="[trigger, compact ? 'w-44 data-[size=default]:h-9' : 'w-52']"
+          :class="[trigger, compact ? [segment.kind === 'bank' ? 'w-52' : 'w-44', 'data-[size=default]:h-9'] : 'w-52']"
         >
           <PhBank v-if="segment.kind === 'bank'" aria-hidden="true" />
           <PhStorefront v-else aria-hidden="true" />

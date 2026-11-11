@@ -251,8 +251,9 @@
     @apply border-border outline-ring/50;
   }
 
+  /* Cabeçalho (4,5rem) + barra fixa dos filtros (3,5rem): o que cobre o topo da página ao rolar. */
   html {
-    scroll-padding-top: 9rem;
+    scroll-padding-top: 8rem;
   }
 
   body {
