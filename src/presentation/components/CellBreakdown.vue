@@ -16,9 +16,10 @@ const largest = computed(() => Math.max(...props.breakdown.accounts.map((account
 
 const accrual = computed(() => props.breakdown.basis.regime === 'accrual')
 const dateOf = (entry: LedgerEntry) => dateInRegime(entry, props.breakdown.basis.regime)
-/** Com uma unidade escolhida, a coluna Unidade só repetiria o filtro. */
-const showUnit = computed(() => props.breakdown.basis.unit === null)
-const showBank = computed(() => props.breakdown.entries.some((entry) => entry.bank))
+/** Com uma unidade (ou um banco) escolhido, a coluna do filtro só o repetiria; colunas vazias também saem. */
+const filtered = (kind: 'unit' | 'bank') => props.breakdown.segment.kind === kind && props.breakdown.basis.unit !== null
+const showUnit = computed(() => !filtered('unit') && props.breakdown.entries.some((entry) => entry.unit))
+const showBank = computed(() => !filtered('bank') && props.breakdown.entries.some((entry) => entry.bank))
 
 const entrySort = useTableSort(() => props.breakdown.entries, {
   date: dateOf,

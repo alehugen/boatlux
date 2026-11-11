@@ -2,6 +2,7 @@ import { flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BasisSelect from '@/presentation/components/BasisSelect.vue'
+import CompanySwitch from '@/presentation/components/CompanySwitch.vue'
 import DebtsCard from '@/presentation/components/DebtsCard.vue'
 import DreTable from '@/presentation/components/DreTable.vue'
 import PeriodSelect, { type PeriodGroup } from '@/presentation/components/PeriodSelect.vue'
@@ -12,7 +13,7 @@ import RevenueBar from '@/presentation/components/RevenueBar.vue'
 import StatCard from '@/presentation/components/StatCard.vue'
 import { useReport } from '@/presentation/composables/useReport'
 import DrePage from '@/presentation/pages/DrePage.vue'
-import { boatluxFile, dreRows, xlsxFile } from '@/test/fixtures'
+import { boatluxFile, dreRows, rsFile, xlsxFile } from '@/test/fixtures'
 import { mountWithProviders } from './mountWithProviders'
 
 const stubs = {
@@ -224,5 +225,57 @@ describe('DrePage: avisos da planilha da Boatlux', () => {
     expect(page.find('#caixa').exists()).toBe(false)
     // O único lançamento sem data de emissão é de saldo inicial, que não é resultado: nada fica de fora.
     expect(page.findComponent(OutsideEntries).exists()).toBe(false)
+  })
+})
+
+describe('DrePage com a planilha da RS Náutica', () => {
+  async function mountRs() {
+    await useReport().importFile(rsFile())
+    const page = mountWithProviders(DrePage, { global: { stubs } })
+    await flushPromises()
+    return page
+  }
+
+  it('mostra a operação na faixa e filtra por banco, não por unidade', async () => {
+    const page = await mountRs()
+    expect(page.get('section.bg-band').text()).toContain('RS Náutica')
+    const basis = page.getComponent(BasisSelect)
+    expect(basis.props('segment')).toMatchObject({ kind: 'bank', label: 'Banco', all: 'Todos os bancos' })
+    expect(basis.props('units')).toEqual(['01 - Santander PJ', '02 - SICREDI'])
+    expect(basis.text()).toContain('Banco')
+    expect(page.get('#dre-completa').text()).toContain('Caixa, todos os bancos')
+  })
+
+  it('recalcula ao escolher um banco e desliga o filtro na competência', async () => {
+    const page = await mountRs()
+    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'cash', unit: '02 - SICREDI' })
+    await flushPromises()
+    expect(page.get('#dre-completa').text()).toContain('Caixa, 02 - SICREDI')
+
+    page.getComponent(BasisSelect).vm.$emit('change', { regime: 'accrual', unit: '02 - SICREDI' })
+    await flushPromises()
+    expect(page.getComponent(BasisSelect).props('basis')).toEqual({ regime: 'accrual', unit: null })
+    expect(page.getComponent(BasisSelect).find('[data-slot="select-trigger"][title]').attributes('title')).toBe(
+      'Na competência, a planilha soma todos os bancos',
+    )
+  })
+})
+
+describe('CompanySwitch', () => {
+  it('só aparece com as duas operações abertas e troca a que está na tela', async () => {
+    await useReport().importFile(boatluxFile())
+    const wrapper = mountWithProviders(CompanySwitch)
+    expect(wrapper.find('button').exists()).toBe(false)
+
+    await useReport().importFile(rsFile())
+    await flushPromises()
+    const buttons = () => wrapper.findAll('button')
+    expect(buttons().map((b) => [b.text(), b.attributes('aria-pressed')])).toEqual([
+      ['Boatlux', 'false'],
+      ['RS Náutica', 'true'],
+    ])
+    await buttons()[0]!.trigger('click')
+    expect(useReport().report.value?.layout.id).toBe('boatlux')
+    expect(buttons()[0]!.attributes('aria-pressed')).toBe('true')
   })
 })

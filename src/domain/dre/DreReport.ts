@@ -16,6 +16,7 @@ import {
   categoryKey,
   DEFAULT_BASIS,
   DreRegime,
+  effectiveBasis,
   inUnit,
   periodInBasis,
   periodInRegime,
@@ -23,6 +24,7 @@ import {
   type DreBasis,
 } from './DreBasis'
 import { parseLineFormula, type LineRecipe } from './DreFormula'
+import { BOATLUX_LAYOUT, DRE_LAYOUTS, segmentOf, type DreLayout, type DreSegment } from './DreLayout'
 import { readLedger, type LedgerEntry } from './Ledger'
 
 export const DreLineKind = {
@@ -74,7 +76,6 @@ const METRIC_LABELS: Record<DreMetric, string[]> = {
 const OPENING_LABEL = 'SALDO INICIAL'
 const CLOSING_LABEL = 'SALDO FINAL'
 
-const DRE_SHEET = 'DRE UNIDADES'
 const END_OF_TIME = new Date(9999, 0, 1)
 
 /** Por que um lançamento do fluxo de caixa não entra na DRE. */
@@ -112,6 +113,7 @@ interface DreReportInit {
   readonly debts?: DebtSchedule | null
   readonly stock?: Stock | null
   readonly views?: Map<string, DreReport>
+  readonly layout?: DreLayout
 }
 
 export class DreReport {
@@ -123,8 +125,10 @@ export class DreReport {
   readonly ledger: readonly LedgerEntry[]
   /** Regime e unidade usados nos valores desta DRE. */
   readonly basis: DreBasis
-  /** Unidades que aparecem no fluxo de caixa (Repasse, Comercial, GC...), para filtrar a DRE. */
+  /** Valores do filtro que aparecem no fluxo de caixa: unidades (Repasse, Comercial...) ou bancos, conforme o modelo. */
   readonly units: readonly string[]
+  /** O modelo da planilha: de qual operação é e por onde a DRE é filtrada. */
+  readonly layout: DreLayout
   readonly debts: DebtSchedule | null
   readonly stock: Stock | null
   private readonly model: DreModel | null
@@ -145,33 +149,47 @@ export class DreReport {
     this.debts = init.debts ?? null
     this.stock = init.stock ?? null
     this.views = init.views ?? new Map()
-    this.units = uniqueUnits(this.ledger)
+    this.layout = init.layout ?? BOATLUX_LAYOUT
+    this.units = uniqueUnits(this.ledger, this.layout.segment)
     this.metrics = matchMetrics(this.lines)
     this.ambiguousLabels = repeatedLabels(this.lines.filter((line) => this.accountsOf(line)[0] === line))
     this.accountKeys = ledgerAccounts(this.model)
   }
 
   /**
-   * Monta a DRE da planilha da Boatlux: a aba "DRE Unidades", recalculada a partir do "Fluxo de Caixa"
-   * no regime e na unidade escolhidos na planilha, mais as abas de dívidas e de estoque. A "DRE Geral" é ignorada.
+   * Monta a DRE de uma planilha de fechamento, reconhecendo o modelo pela aba: a "DRE Unidades" da Boatlux
+   * (filtro por unidade) ou a "DRE Geral" da RS Náutica (filtro por banco). Os valores são recalculados a
+   * partir do "Fluxo de Caixa" no regime e no filtro escolhidos na planilha; dívidas e estoque vêm das abas próprias.
    */
   static fromWorkbook(tables: readonly RawTable[], { name, asOf = new Date() }: { name: string; asOf?: Date }): DreReport {
-    const sheet = tables.find((table) => normalizeText(table.sheet).includes(DRE_SHEET))
-    if (!sheet) throw new DomainError('Não encontramos a aba "DRE Unidades" nesta planilha.')
+    const candidates = DRE_LAYOUTS.flatMap((layout) => {
+      const sheet = tables.find((table) => normalizeText(table.sheet).includes(normalizeText(layout.sheet)))
+      return sheet ? [{ layout, sheet, report: DreReport.fromTable(sheet, asOf) }] : []
+    })
+    if (!candidates.length) {
+      throw new DomainError(
+        `Não encontramos a aba da DRE nesta planilha: ${DRE_LAYOUTS.map((l) => `"${l.sheet}" (${l.company})`).join(' ou ')}.`,
+      )
+    }
 
-    const report = DreReport.fromTable(sheet, asOf)
-    if (!report) {
+    // A primeira com receita; a RS tem uma "DRE Unidades" zerada, que não conta.
+    const hasRevenue = (report: DreReport) => !!report.metric(DreMetric.GrossRevenue)?.values.some((value) => value !== 0)
+    const chosen = candidates.find((c) => c.report && hasRevenue(c.report)) ?? candidates.find((c) => c.report)
+    if (!chosen) {
+      const { sheet, layout } = candidates[0]!
       if (DreReport.fromTable(sheet, END_OF_TIME)) {
         throw new DomainError('A DRE só tem meses que ainda não terminaram. Os meses entram na análise depois de encerrados.')
       }
       throw new DomainError(
-        'A aba "DRE Unidades" precisa ter a linha dos meses (1 a 12), a dos anos logo abaixo e a linha "Receita operacional bruta".',
+        `A aba "${layout.sheet}" precisa ter a linha dos meses (1 a 12), a dos anos logo abaixo e a linha "Receita operacional bruta".`,
       )
     }
 
+    const { layout, sheet } = chosen
     const rest = tables.filter((table) => table !== sheet)
-    const complete = report.with({
+    const complete = chosen.report!.with({
       name,
+      layout,
       ledger: rest.map(readLedger).find(Boolean) ?? [],
       debts: rest.map((table) => readDebts(table, asOf)).find(Boolean) ?? null,
       stock: rest.map(readStock).find(Boolean) ?? null,
@@ -222,7 +240,9 @@ export class DreReport {
    * e de todas as unidades (os lançamentos de saldo inicial são da empresa toda, sem unidade).
    */
   get hasCashBalance(): boolean {
-    return this.basis.regime === DreRegime.Cash && this.basis.unit === null && !!this.metric(DreMetric.OpeningCash)
+    // Na RS, o saldo inicial é lançado por banco: dá para ver o saldo de um banco só.
+    const wholeCompany = this.basis.unit === null || this.layout.segment.kind === 'bank'
+    return this.basis.regime === DreRegime.Cash && wholeCompany && !!this.metric(DreMetric.OpeningCash)
   }
 
   /**
@@ -244,14 +264,15 @@ export class DreReport {
   }
 
   /** A mesma DRE recalculada a partir do fluxo de caixa no regime e na unidade escolhidos. */
-  withBasis(basis: DreBasis): DreReport {
+  withBasis(requested: DreBasis): DreReport {
     if (!this.canChangeBasis || !this.model) return this
+    const basis = effectiveBasis(requested, this.segment)
     const key = basisKey(basis)
     const cached = this.views.get(key)
     if (cached) return cached
 
     const model = this.model
-    const lines = recalculate(model, this.ledger, basis)
+    const lines = recalculate(model, this.ledger, basis, this.segment)
     // Sem movimento neste regime ou unidade: os mesmos meses da planilha, zerados.
     const window = closedWindow(lines, model.periods, model.asOf) ?? closedWindow(lines, model.periods, model.asOf, model.lines)!
     const view = new DreReport({ ...this.init(), ...window, basis })
@@ -282,8 +303,8 @@ export class DreReport {
     for (const entry of this.ledger) {
       if (isOpeningEntry(entry)) continue
       // Lançamento de outra unidade: é da DRE dela, não está "fora".
-      const unitless = !entry.unit
-      if (!unitless && !inUnit(entry, this.basis)) continue
+      const unitless = !segmentOf(entry, this.segment)
+      if (!unitless && !inUnit(entry, this.basis, this.segment)) continue
 
       // Na competência, quem não tem data de emissão é situado pelo mês do pagamento.
       const month = periodInRegime(entry, this.basis.regime)
@@ -322,9 +343,14 @@ export class DreReport {
     if (!period) return []
     const labels = new Set(this.accountsOf(line).map((account) => categoryKey(account.label)))
     return this.ledger.filter((entry) => {
-      const entryPeriod = periodInBasis(entry, this.basis)
+      const entryPeriod = periodInBasis(entry, this.basis, this.segment)
       return !!entryPeriod && comparePeriods(entryPeriod, period) === 0 && labels.has(categoryKey(entry.category))
     })
+  }
+
+  /** Por onde a DRE é filtrada neste modelo: unidade ou banco. */
+  get segment(): DreSegment {
+    return this.layout.segment
   }
 
   metric(metric: DreMetric): DreLine | undefined {
@@ -354,6 +380,7 @@ export class DreReport {
       debts: this.debts,
       stock: this.stock,
       views: this.views,
+      layout: this.layout,
     }
   }
 
@@ -461,10 +488,13 @@ function buildModel(
 const cents = (value: number) => Math.round(value * 100) / 100
 
 /** Lançamentos de saldo (ex.: "Saldo inicial") registram o caixa, não resultado. */
-/** Unidades do fluxo de caixa, sem repetir variações de maiúsculas e espaços ("Repasse" e "REPASSE "). */
-function uniqueUnits(ledger: readonly LedgerEntry[]): string[] {
+/** Unidades (ou bancos) do fluxo de caixa, sem repetir variações de maiúsculas e espaços ("Repasse" e "REPASSE "). */
+function uniqueUnits(ledger: readonly LedgerEntry[], segment: DreSegment): string[] {
   const byKey = new Map<string, string>()
-  for (const { unit } of ledger) if (unit && !byKey.has(categoryKey(unit))) byKey.set(categoryKey(unit), unit.trim())
+  for (const entry of ledger) {
+    const unit = segmentOf(entry, segment)
+    if (unit && !byKey.has(categoryKey(unit))) byKey.set(categoryKey(unit), unit.trim())
+  }
   return [...byKey.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'))
 }
 
@@ -481,11 +511,11 @@ function ledgerAccounts(model: DreModel | null): Set<string> {
  * Refaz as contas da planilha: cada conta soma o fluxo de caixa pela categoria (como o SOMASES) e os totais
  * e resultados seguem as fórmulas de cada mês. Os valores ficam em centavos, como o Excel mostra.
  */
-function recalculate(model: DreModel, ledger: readonly LedgerEntry[], basis: DreBasis): DreLine[] {
+function recalculate(model: DreModel, ledger: readonly LedgerEntry[], basis: DreBasis, segment: DreSegment): DreLine[] {
   const indexOf = new Map(model.periods.map((period, i) => [periodKey(period), i]))
   const ledgerTotals = new Map<string, number[]>()
   for (const entry of ledger) {
-    const period = periodInBasis(entry, basis)
+    const period = periodInBasis(entry, basis, segment)
     const index = period ? indexOf.get(periodKey(period)) : undefined
     if (index === undefined || !entry.category) continue
     const key = categoryKey(entry.category)
@@ -530,15 +560,26 @@ function recalculate(model: DreModel, ledger: readonly LedgerEntry[], basis: Dre
 const isUpperLabel = (label: string) => /\p{L}/u.test(label) && label === label.toUpperCase()
 
 /**
- * "Saldo inicial" vale o primeiro mês do período e "Saldo final" o último, mas só quando a DRE tem saldo
- * inicial. Na DRE Unidades, "Saldo final" é o resultado do mês e soma como as outras linhas.
+ * "Saldo inicial" vale o primeiro mês do período e o "Saldo final" de caixa o último, mas só quando a DRE tem
+ * saldo inicial. Na DRE Unidades, "Saldo final" é o resultado do mês e soma como as outras linhas.
  */
-function aggregationOf(label: string, hasOpening: boolean): DreAggregation {
-  if (!hasOpening) return 'sum'
+function aggregationOf(label: string, row: number, closingRow: number | null): DreAggregation {
   const normalized = normalizeText(label)
+  if (closingRow === null) return 'sum'
   if (normalized === OPENING_LABEL) return 'first'
-  if (normalized === CLOSING_LABEL) return 'last'
+  if (row === closingRow) return 'last'
   return 'sum'
+}
+
+/**
+ * A linha do saldo final de caixa: o "Saldo final" logo depois do "Saldo inicial". Na DRE Geral da RS há também
+ * um "SALDO FINAL" antes dele, que é o resultado do mês. Sem saldo inicial, não há saldo de caixa.
+ */
+function closingCashRow(entries: readonly Entry[]): number | null {
+  const opening = entries.findIndex((entry) => normalizeText(entry.label) === OPENING_LABEL)
+  if (opening === -1) return null
+  const isClosing = (entry: Entry) => normalizeText(entry.label) === CLOSING_LABEL
+  return (entries.slice(opening).find(isClosing) ?? entries.find(isClosing))?.row ?? null
 }
 
 const isSumOf = (parent: number[], children: number[][]) =>
@@ -572,11 +613,11 @@ function classifyLines(entries: Entry[]): { lines: DreLine[]; rowOf: Map<string,
 
   const lines: DreLine[] = []
   const rowOf = new Map<string, number>()
-  const hasOpening = entries.some((entry) => normalizeText(entry.label) === OPENING_LABEL)
+  const closingRow = closingCashRow(entries)
   let section: string | null = null
   const add = (entry: Entry, kind: DreLineKind, parentId: string | null) => {
     const id = `l${lines.length}`
-    lines.push({ id, label: entry.label, kind, parentId, aggregation: aggregationOf(entry.label, hasOpening), values: entry.values })
+    lines.push({ id, label: entry.label, kind, parentId, aggregation: aggregationOf(entry.label, entry.row, closingRow), values: entry.values })
     rowOf.set(id, entry.row)
     return id
   }
@@ -643,7 +684,9 @@ function repeatedLabels(lines: readonly DreLine[]): Set<string> {
 function matchMetrics(lines: readonly DreLine[]): Map<DreMetric, DreLine> {
   const metrics = new Map<DreMetric, DreLine>()
   for (const [metric, labels] of Object.entries(METRIC_LABELS) as [DreMetric, string[]][]) {
-    const line = lines.find((l) => labels.includes(normalizeText(l.label)))
+    const matches = lines.filter((l) => labels.includes(normalizeText(l.label)))
+    // Com dois "Saldo final" (RS), o de caixa é o que vale o último mês.
+    const line = metric === DreMetric.EndingCash ? (matches.find((l) => l.aggregation === 'last') ?? matches[0]) : matches[0]
     if (line) metrics.set(metric, line)
   }
   return metrics

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ImportFileUseCase } from '@/application'
 import { XlsxFileParser } from '@/infrastructure/XlsxFileParser'
-import { boatluxFile, dreRows, xlsxFile } from '@/test/fixtures'
+import { boatluxFile, dreRows, xlsxFile, rsFile } from '@/test/fixtures'
 
 const importFile = new ImportFileUseCase(new XlsxFileParser(), () => new Date(2026, 10, 7))
 
@@ -29,11 +29,20 @@ describe('ImportFileUseCase', () => {
     expect(report.metric('grossRevenue')?.values).toEqual([1000, 1200, 900])
   })
 
+  it('reconhece a planilha da RS Náutica pela "DRE Geral" e filtra por banco', async () => {
+    const report = await importFile.execute(rsFile())
+    expect(report.layout.id).toBe('rs-nautica')
+    expect(report.layout.company).toBe('RS Náutica')
+    expect(report.units).toEqual(['01 - Santander PJ', '02 - SICREDI'])
+    expect(report.basis).toEqual({ regime: 'cash', unit: null })
+    expect(report.metric('grossRevenue')?.values).toEqual([100, 100])
+  })
+
   it('explica falhas com mensagens legíveis', async () => {
     expect(await errorOf(new File([], 'vazio.xlsx'))).toBe('O arquivo está vazio: vazio.xlsx')
     expect(await errorOf(new File(['a;b'], 'tabela.csv'))).toMatch(/^Formato não suportado: tabela\.csv/)
     expect(await errorOf(xlsxFile('vendas.xlsx', { Jan: [['Item', 'Valor'], ['A', '1']] }))).toBe(
-      'Não encontramos a aba "DRE Unidades" nesta planilha.',
+      'Não encontramos a aba da DRE nesta planilha: "DRE Unidades" (Boatlux) ou "DRE Geral" (RS Náutica).',
     )
     expect(await errorOf(xlsxFile('dre.xlsx', { 'DRE Unidades': [['Item', 'Valor'], ['A', '1']] }))).toMatch(/linha dos meses/)
     expect(await errorOf(xlsxFile('vazia.xlsx', { Plan1: [['']] }))).toBe('O arquivo não contém dados.')

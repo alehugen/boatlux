@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { PhScales, PhStorefront } from '@phosphor-icons/vue'
+import { PhBank, PhScales, PhStorefront } from '@phosphor-icons/vue'
 import { computed, useId } from 'vue'
-import { DreRegime, type DreBasis } from '@/domain/dre'
+import { BOATLUX_LAYOUT, DreRegime, type DreBasis, type DreSegment } from '@/domain/dre'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/ui/select'
 
 /**
- * Os seletores da aba DRE Unidades: regime (caixa ou competência) e unidade (Repasse, Comercial, GC...).
- * "Todas as unidades" soma a empresa inteira. `compact` esconde os rótulos (barra fixa ao rolar);
+ * Os seletores da DRE: regime (caixa ou competência) e o filtro do modelo, a unidade na Boatlux (Repasse,
+ * Comercial, GC...) ou o banco na RS Náutica. "Todas as unidades" / "Todos os bancos" soma a empresa inteira. `compact` esconde os rótulos (barra fixa ao rolar);
  * `tone="surface"` usa as cores do card, para a DRE em tela cheia.
  */
 const props = withDefaults(
-  defineProps<{ basis: DreBasis; units: readonly string[]; compact?: boolean; tone?: 'band' | 'surface' }>(),
-  { compact: false, tone: 'band' },
+  defineProps<{
+    basis: DreBasis
+    units: readonly string[]
+    segment?: DreSegment
+    compact?: boolean
+    tone?: 'band' | 'surface'
+  }>(),
+  { segment: () => BOATLUX_LAYOUT.segment, compact: false, tone: 'band' },
 )
 const emit = defineEmits<{ change: [basis: DreBasis] }>()
 
@@ -20,6 +26,10 @@ const REGIMES = [
   { value: DreRegime.Cash, label: 'Caixa' },
   { value: DreRegime.Accrual, label: 'Competência' },
 ]
+
+/** Na RS, os lançamentos de competência não têm banco: o filtro fica desligado, como na fórmula da planilha. */
+const segmentOff = computed(() => props.basis.regime === DreRegime.Accrual && !props.segment.inAccrual)
+const SEGMENT_OFF_HINT = 'Na competência, a planilha soma todos os bancos'
 
 const regimeId = useId()
 const unitId = useId()
@@ -58,15 +68,20 @@ const trigger = computed(() => [
     </div>
 
     <div v-if="units.length" class="flex flex-col gap-1.5">
-      <span :id="unitId" :class="compact ? 'sr-only' : tone === 'surface' ? 'text-muted-foreground' : 'text-band-muted'">Unidade</span>
-      <Select v-model="unit">
-        <SelectTrigger :aria-labelledby="unitId" :class="[trigger, compact ? 'w-44 data-[size=default]:h-9' : 'w-52']">
-          <PhStorefront aria-hidden="true" />
+      <span :id="unitId" :class="compact ? 'sr-only' : tone === 'surface' ? 'text-muted-foreground' : 'text-band-muted'">{{ segment.label }}</span>
+      <Select v-model="unit" :disabled="segmentOff">
+        <SelectTrigger
+          :aria-labelledby="unitId"
+          :title="segmentOff ? SEGMENT_OFF_HINT : undefined"
+          :class="[trigger, compact ? 'w-44 data-[size=default]:h-9' : 'w-52']"
+        >
+          <PhBank v-if="segment.kind === 'bank'" aria-hidden="true" />
+          <PhStorefront v-else aria-hidden="true" />
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           <SelectItem v-for="name in units" :key="name" :value="name">{{ name }}</SelectItem>
-          <SelectItem :value="ALL">Todas as unidades</SelectItem>
+          <SelectItem :value="ALL">{{ segment.all }}</SelectItem>
         </SelectContent>
       </Select>
     </div>

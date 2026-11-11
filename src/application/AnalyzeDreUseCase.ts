@@ -5,6 +5,7 @@ import {
   DreMetric,
   type DreBasis,
   type DreLine,
+  type DreSegment,
   type DreReport,
   type LedgerEntry,
   type OutsideGroup,
@@ -95,6 +96,8 @@ export interface CellBreakdown {
   readonly label: string
   readonly period: Period
   readonly basis: DreBasis
+  /** Por onde a DRE é filtrada (unidade ou banco), para a tabela não repetir a coluna do filtro. */
+  readonly segment: DreSegment
   readonly value: number
   readonly entries: readonly LedgerEntry[]
   readonly total: number
@@ -270,7 +273,7 @@ export class AnalyzeDreUseCase {
       .filter((account) => account.count > 0)
       .sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
 
-    return { label: line.label, period, basis: report.basis, value, entries, total, difference: value - total, accounts }
+    return { label: line.label, period, basis: report.basis, segment: report.segment, value, entries, total, difference: value - total, accounts }
   }
 
   projectProfitTarget(base: ProfitTargetBase, target: number): ProfitTargetProjection {

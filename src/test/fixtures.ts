@@ -192,3 +192,69 @@ export function boatluxFile(): File {
     { 'DRE Unidades': dre.formulas },
   )
 }
+
+/**
+ * Uma DRE no formato da RS Náutica (aba "DRE Geral"): regime em B1, banco em B2 ("TODAS"), contas somadas do
+ * fluxo de caixa e, no fim, o "SALDO FINAL" do mês seguido do saldo de caixa ("Saldo inicial" e "Saldo final").
+ * Os valores são os de Caixa / todos os bancos.
+ */
+export function rsDre(): { rows: string[][]; formulas: Map<string, string> } {
+  type Line = [label: string, jan: number, feb: number, formula: (col: string) => string]
+  const lines: (Line | null)[] = [
+    ['RECEITA OPERACIONAL BRUTA', 100, 100, (c) => `SUM(${c}6:${c}7)`],
+    ['Escola Náutica', 100, 40, () => SUMIFS],
+    ['Aluguel de embarcações', 0, 60, () => SUMIFS],
+    null,
+    ['DESPESAS OPERACIONAIS', -30, 0, (c) => `SUM(${c}10:${c}10)`],
+    ['Aluguel', -30, 0, () => SUMIFS],
+    null,
+    ['RESULTADO LÍQUIDO (EBITDA)', 70, 100, (c) => `${c}5+${c}9`],
+    null,
+    ['SALDO FINAL', 70, 100, (c) => `SUM(${c}12)`],
+    ['Saldo inicial', 25, 0, () => SUMIFS],
+    ['Saldo final', 95, 100, (c) => `${c}15+${c}14`],
+  ]
+  const rows = [
+    ['DEMONSTRATIVO DE RESULTADO DO EXERCÍCIO - GERENCIAL', 'Caixa', '', ''],
+    ['', 'TODAS', '', ''],
+    ['', '', '1', '2'],
+    ['DESCRIÇÃO CONTAS', '', '2026', '2026'],
+  ]
+  const formulas = new Map<string, string>()
+  for (const line of lines) {
+    if (!line) {
+      rows.push(['', '', '', ''])
+      continue
+    }
+    const [label, jan, feb, formula] = line
+    formulas.set(cellKey(rows.length, 2), formula('C'))
+    formulas.set(cellKey(rows.length, 3), formula('D'))
+    rows.push([label, '', String(jan), String(feb)])
+  }
+  return { rows, formulas }
+}
+
+/** Fluxo de caixa da RS: categoria em "Classificações", banco nos lançamentos de caixa e nenhum banco na competência. */
+export const RS_LEDGER_ROWS: string[][] = [
+  [' ', 'MOVIMENTAÇÃO', 'HISTÓRICO', 'CLASSIFICAÇÕES', 'VALOR', 'DATA PAGTO', 'UNIDADE', 'MÊS COMP.', 'ANO COMP.', 'VALOR DE MOVIMENTO', 'MÊS CX.', 'ANO CX.', 'BANCO'],
+  ['', 'Entrada', 'Turma de janeiro', 'Escola Náutica', '100', '2026-01-15', '', '-', '-', '100', '1', '2026', '01 - Santander PJ'],
+  ['', 'Entrada', 'Turma de fevereiro', 'Escola Náutica', '40', '2026-02-10', '', '-', '-', '40', '2', '2026', '02 - SICREDI'],
+  ['', 'Entrada', 'Locação', 'Aluguel de embarcações', '60', '2026-02-12', '', '-', '-', '60', '2', '2026', '01 - Santander PJ'],
+  ['', 'Saída', 'Aluguel da sala', 'Aluguel', '30', '2026-01-05', '', '-', '-', '-30', '1', '2026', '02 - SICREDI'],
+  ['', 'Entrada', 'Saldo', 'Saldo inicial', '20', '2026-01-01', '', '-', '-', '20', '1', '2026', '01 - Santander PJ'],
+  ['', 'Entrada', 'Saldo', 'Saldo inicial', '5', '2026-01-01', '', '-', '-', '5', '1', '2026', '02 - SICREDI'],
+  ['', 'Entrada', 'Turma de janeiro', 'Escola Náutica', '90', '', '', '1', '2026', '90', '-', '-', ''],
+  ['', 'Saída', 'Aluguel da sala', 'Aluguel', '30', '', '', '1', '2026', '-30', '-', '-', ''],
+]
+
+/** A planilha da RS Náutica: a "DRE Geral" com valores e uma "DRE Unidades" zerada, como na planilha real. */
+export function rsFile(): File {
+  const dre = rsDre()
+  const empty = rsDre()
+  const zeroed = empty.rows.map((row, i) => (i < 4 ? row : row.map((cell, c) => (c >= 2 && cell !== '' ? '0' : cell))))
+  return xlsxFile(
+    'Fechamento Financeiro 2026 - RS Náutica.xlsx',
+    { 'DRE Unidades': zeroed, 'Fluxo de Caixa': RS_LEDGER_ROWS, 'DRE Geral': dre.rows },
+    { 'DRE Geral': dre.formulas, 'DRE Unidades': empty.formulas },
+  )
+}

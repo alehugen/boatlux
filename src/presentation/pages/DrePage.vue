@@ -42,7 +42,7 @@ const { report, basis, setBasis, selections, selectedKey, analysis, periodLabels
 const basisLabel = computed(() => {
   if (!report.value?.canChangeBasis) return ''
   const regime = basis.value.regime === DreRegime.Accrual ? 'Competência' : 'Caixa'
-  return `${regime}, ${basis.value.unit ?? 'todas as unidades'}`
+  return `${regime}, ${basis.value.unit ?? report.value.segment.all.toLowerCase()}`
 })
 
 const ALL_REVENUE = 'all'
@@ -160,10 +160,13 @@ const expenseItems = computed(() =>
       <div ref="heroHead" class="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div class="min-w-0">
           <h1 class="text-[1.95rem] leading-tight">{{ periodLabels.heading }}</h1>
-          <p class="mt-1 truncate text-sm text-band-muted">{{ report.name }}</p>
+          <p class="mt-1 truncate text-sm text-band-muted">
+            <span class="text-band-foreground">{{ report.layout.company }}</span>
+            <span aria-hidden="true"> · </span>{{ report.name }}
+          </p>
         </div>
         <div class="flex flex-wrap items-end gap-3">
-          <BasisSelect v-if="report.canChangeBasis" :basis="basis" :units="report.units" @change="setBasis" />
+          <BasisSelect v-if="report.canChangeBasis" :basis="basis" :units="report.units" :segment="report.segment" @change="setBasis" />
           <PeriodSelect v-model="selectedKey" :groups="periodGroups" />
         </div>
       </div>
@@ -206,7 +209,7 @@ const expenseItems = computed(() =>
           <!-- Os mesmos filtros do topo: regime, conta e período continuam à mão ao rolar. -->
           <div class="-mx-4 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:flex-none lg:overflow-visible lg:px-0">
             <PeriodSelect v-model="selectedKey" :groups="periodGroups" compact class="shrink-0" />
-            <BasisSelect v-if="report.canChangeBasis" :basis="basis" :units="report.units" compact class="shrink-0" @change="setBasis" />
+            <BasisSelect v-if="report.canChangeBasis" :basis="basis" :units="report.units" :segment="report.segment" compact class="shrink-0" @change="setBasis" />
           </div>
         </div>
       </div>
@@ -222,7 +225,7 @@ const expenseItems = computed(() =>
           {{ report.ignoredPeriods.length === 1 ? 'não entra' : 'não entram' }} na análise: só contam os meses já encerrados.
           Mês em andamento e projeções da planilha ficam de fora até o mês terminar.
         </p>
-        <OutsideEntries :groups="analysis.outside" :when="periodLabels.when" />
+        <OutsideEntries :groups="analysis.outside" :when="periodLabels.when" :layout="report.layout" />
       </div>
 
       <PageSection id="indicadores" class="space-y-5">
@@ -306,12 +309,12 @@ const expenseItems = computed(() =>
       <PageSection id="dre-completa" class="space-y-5">
         <SectionHeading title="DRE completa" :subtitle="basisLabel || undefined" />
         <p v-if="report.staticLines.length" class="surface border-l-4 border-l-primary px-4 py-3 text-sm text-body">
-          Valor digitado na planilha, que não muda com o regime nem com a unidade:
+          Valor digitado na planilha, que não muda com o regime nem com {{ report.segment.kind === 'bank' ? 'o banco' : 'a unidade' }}:
           <span class="text-foreground">{{ report.staticLines.map(prettifyLabel).join(', ') }}</span>.
         </p>
         <DreTable :report="report" :highlight="analysis.indexes" :basis="basisLabel || undefined">
           <template v-if="report.canChangeBasis" #filters>
-            <BasisSelect :basis="basis" :units="report.units" compact tone="surface" @change="setBasis" />
+            <BasisSelect :basis="basis" :units="report.units" :segment="report.segment" compact tone="surface" @change="setBasis" />
           </template>
         </DreTable>
       </PageSection>

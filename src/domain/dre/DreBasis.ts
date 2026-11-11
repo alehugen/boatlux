@@ -1,4 +1,5 @@
 import { normalizeText, type Period } from '@/domain/shared'
+import { BOATLUX_LAYOUT, segmentOf, type DreSegment } from './DreLayout'
 import type { LedgerEntry } from './Ledger'
 
 /** Regime da DRE, como o seletor "Caixa / Competência" da planilha. */
@@ -10,8 +11,8 @@ export const DreRegime = {
 export type DreRegime = (typeof DreRegime)[keyof typeof DreRegime]
 
 /**
- * Como os valores da DRE são somados a partir do fluxo de caixa: o regime e a unidade
- * (Repasse, Comercial, GC...), como os seletores B2 e B3 da aba DRE Unidades. `null` = todas as unidades.
+ * Como os valores da DRE são somados a partir do fluxo de caixa: o regime e o filtro do modelo da planilha,
+ * a unidade na Boatlux (Repasse, Comercial, GC...) ou o banco na RS Náutica. `null` = sem filtro (todas/todos).
  */
 export interface DreBasis {
   readonly regime: DreRegime
@@ -19,6 +20,8 @@ export interface DreBasis {
 }
 
 export const DEFAULT_BASIS: DreBasis = { regime: DreRegime.Cash, unit: null }
+
+const UNIT_SEGMENT = BOATLUX_LAYOUT.segment
 
 /**
  * Chave para casar textos como o SOMASES do Excel: ignora maiúsculas e minúsculas e os espaços
@@ -30,9 +33,13 @@ export const basisKey = ({ regime, unit }: DreBasis): string => `${regime}:${uni
 
 export const sameBasis = (a: DreBasis, b: DreBasis): boolean => basisKey(a) === basisKey(b)
 
-/** Se o lançamento é da unidade escolhida (em qualquer regime, como na planilha). */
-export const inUnit = (entry: LedgerEntry, basis: DreBasis): boolean =>
-  basis.unit === null || categoryKey(entry.unit) === categoryKey(basis.unit)
+/** O filtro que vale de fato: na competência, um filtro que não se aplica a ela (banco, na RS) fica sem efeito. */
+export const effectiveBasis = (basis: DreBasis, segment: DreSegment): DreBasis =>
+  basis.regime === DreRegime.Accrual && !segment.inAccrual && basis.unit !== null ? { ...basis, unit: null } : basis
+
+/** Se o lançamento é da unidade (ou do banco) escolhido, em qualquer regime, como na planilha. */
+export const inUnit = (entry: LedgerEntry, basis: DreBasis, segment: DreSegment = UNIT_SEGMENT): boolean =>
+  basis.unit === null || categoryKey(segmentOf(entry, segment)) === categoryKey(basis.unit)
 
 /** O mês do lançamento no regime: pagamento no caixa, emissão na competência. */
 export const periodInRegime = (entry: LedgerEntry, regime: DreRegime): Period | null =>
@@ -42,14 +49,15 @@ export const periodInRegime = (entry: LedgerEntry, regime: DreRegime): Period | 
 export const dateInRegime = (entry: LedgerEntry, regime: DreRegime): string =>
   regime === DreRegime.Accrual ? entry.issueDate : entry.date
 
-/** O mês em que o lançamento entra na DRE no regime e na unidade escolhidos, ou `null` se não entra. */
-export function periodInBasis(entry: LedgerEntry, basis: DreBasis): Period | null {
-  return inUnit(entry, basis) ? periodInRegime(entry, basis.regime) : null
+/** O mês em que o lançamento entra na DRE no regime e no filtro escolhidos, ou `null` se não entra. */
+export function periodInBasis(entry: LedgerEntry, basis: DreBasis, segment: DreSegment = UNIT_SEGMENT): Period | null {
+  return inUnit(entry, basis, segment) ? periodInRegime(entry, basis.regime) : null
 }
 
 /**
- * Lê o que estava escolhido na planilha: a célula "Caixa" ou "Competência" (B2 na DRE Unidades) e,
- * logo abaixo, a unidade (B3). Uma unidade sem lançamentos vira "todas as unidades".
+ * Lê o que estava escolhido na planilha: a célula "Caixa" ou "Competência" (B2 na DRE Unidades, B1 na
+ * DRE Geral da RS) e, logo abaixo, a unidade ou o banco. Um valor que não está nos lançamentos
+ * (ex.: "TODAS") vira "sem filtro".
  */
 export function readSheetBasis(rows: readonly string[][], units: readonly string[]): DreBasis | null {
   for (const [r, row] of rows.entries()) {

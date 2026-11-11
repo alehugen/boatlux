@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DRE_LINES, dreRows } from '@/test/fixtures'
+import { DRE_LINES, dreRows, RS_LEDGER_ROWS, rsDre } from '@/test/fixtures'
 import { DreLineKind, DreMetric, DreReport } from '@/domain/dre'
 
 const table = (rows = dreRows(), sheet = 'DRE Unidades') => ({ sheet, rows })
@@ -89,9 +89,55 @@ describe('DreReport.fromWorkbook', () => {
     expect(report.metric(DreMetric.GrossRevenue)?.values).toEqual([1000, 1200, 900])
   })
 
-  it('recusa planilhas sem a aba "DRE Unidades" ou sem a estrutura da DRE', () => {
-    expect(() => DreReport.fromWorkbook([table(dreRows(), 'DRE Geral')], { name: 'x' })).toThrow('Não encontramos a aba "DRE Unidades"')
+  it('recusa planilhas sem a aba da DRE ou sem a estrutura da DRE', () => {
+    expect(() => DreReport.fromWorkbook([table(dreRows(), 'Resumo')], { name: 'x' })).toThrow('Não encontramos a aba da DRE')
     expect(() => DreReport.fromWorkbook([table([['Item', 'Valor']], 'DRE Unidades')], { name: 'x' })).toThrow(/linha dos meses/)
+  })
+})
+
+describe('DreReport: modelo da RS Náutica', () => {
+  const rs = () => {
+    const dre = rsDre()
+    return DreReport.fromWorkbook(
+      [
+        { sheet: 'DRE Unidades', rows: dreRows({ lines: [['RECEITA OPERACIONAL BRUTA', 0, 0, 0, 0], ['Vendas', 0, 0, 0, 0]] }) },
+        { sheet: 'DRE Geral', rows: dre.rows, formulas: dre.formulas },
+        { sheet: 'Fluxo de Caixa', rows: RS_LEDGER_ROWS },
+      ],
+      { name: 'RS', asOf: new Date(2026, 5, 1) },
+    )
+  }
+  const values = (report: DreReport, metric: DreMetric) => report.metric(metric)?.values
+
+  it('usa a "DRE Geral" quando a "DRE Unidades" está zerada, com os bancos como filtro', () => {
+    const report = rs()
+    expect(report.layout.id).toBe('rs-nautica')
+    expect(report.segment.label).toBe('Banco')
+    expect(report.units).toEqual(['01 - Santander PJ', '02 - SICREDI'])
+    expect(values(report, DreMetric.GrossRevenue)).toEqual([100, 100])
+  })
+
+  it('recalcula por banco no caixa, com o saldo de caixa do banco', () => {
+    const sicredi = rs().withBasis({ regime: 'cash', unit: '02 - Sicredi' })
+    expect(values(sicredi, DreMetric.GrossRevenue)).toEqual([0, 40])
+    expect(values(sicredi, DreMetric.Ebitda)).toEqual([-30, 40])
+    expect(sicredi.hasCashBalance).toBe(true)
+    expect(values(sicredi, DreMetric.OpeningCash)).toEqual([5, 0])
+  })
+
+  it('na competência, ignora o banco, como a fórmula da planilha', () => {
+    const accrual = rs().withBasis({ regime: 'accrual', unit: '02 - SICREDI' })
+    expect(accrual.basis).toEqual({ regime: 'accrual', unit: null })
+    expect(values(accrual, DreMetric.GrossRevenue)?.[0]).toBe(90)
+  })
+
+  it('o saldo de caixa é o "Saldo final" depois do "Saldo inicial", não o "SALDO FINAL" do resultado', () => {
+    const report = rs()
+    const ending = report.metric(DreMetric.EndingCash)!
+    expect(ending.label).toBe('Saldo final')
+    expect(ending.aggregation).toBe('last')
+    expect(report.lines.find((line) => line.label === 'SALDO FINAL')?.aggregation).toBe('sum')
+    expect(report.valueOf(ending, [0, 1])).toBe(100)
   })
 })
 

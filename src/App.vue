@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import AppFooter from '@/presentation/components/AppFooter.vue'
+import CompanySwitch from '@/presentation/components/CompanySwitch.vue'
 import LoaderTrack from '@/presentation/components/LoaderTrack.vue'
 import ThemeToggle from '@/presentation/components/ThemeToggle.vue'
 import { TooltipProvider } from '@/presentation/components/ui/tooltip'
@@ -10,7 +11,7 @@ import { useScrolled } from '@/presentation/composables/useScroll'
 
 const scrolled = useScrolled()
 const { swapping, busy } = usePageLoading()
-const { isImporting } = useReport()
+const { isImporting, activeId } = useReport()
 const working = computed(() => busy.value || isImporting.value)
 
 onMounted(finishPageLoading)
@@ -27,7 +28,10 @@ onMounted(finishPageLoading)
           <RouterLink :to="{ name: 'import' }" class="rounded-sm" aria-label="Boatlux, página inicial">
             <img src="/brand/logo-white.png" alt="" width="133" height="36" class="h-9 w-auto" />
           </RouterLink>
-          <ThemeToggle />
+          <div class="flex items-center gap-3">
+            <CompanySwitch />
+            <ThemeToggle />
+          </div>
         </nav>
         <LoaderTrack
           :active="working"
@@ -58,7 +62,8 @@ onMounted(finishPageLoading)
             @before-enter="pageEntering"
             @after-enter="finishPageLoading"
           >
-            <component :is="Component" :key="route.path" />
+            <!-- Trocar de operação troca a página inteira, com a mesma transição da navegação. -->
+            <component :is="Component" :key="route.name === 'dre' ? `dre:${activeId}` : route.path" />
           </Transition>
         </RouterView>
       </main>

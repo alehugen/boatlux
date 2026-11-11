@@ -1,37 +1,40 @@
 <script setup lang="ts">
 import { PhWarning } from '@phosphor-icons/vue'
 import { computed } from 'vue'
-import type { OutsideGroup, OutsideReason } from '@/domain/dre'
+import { BOATLUX_LAYOUT, type DreLayout, type OutsideGroup, type OutsideReason } from '@/domain/dre'
 import { sum } from '@/domain/shared'
 import { formatCurrency, formatCurrencyCompact } from '@/presentation/format'
 
 /** Lançamentos do fluxo de caixa que a DRE deixa de fora, com o motivo, para corrigir na planilha. */
-const props = defineProps<{ groups: readonly OutsideGroup[]; when: string }>()
+const props = withDefaults(defineProps<{ groups: readonly OutsideGroup[]; when: string; layout?: DreLayout }>(), {
+  layout: () => BOATLUX_LAYOUT,
+})
 
-const REASONS: Record<OutsideReason, { title: string; fix: string }> = {
+const reasonsFor = ({ sheet, segment }: DreLayout): Record<OutsideReason, { title: string; fix: string }> => ({
   'no-category': {
     title: 'Sem categoria',
     fix: 'A classificação do lançamento não está na aba Lista, então a coluna Categoria fica vazia. Cadastre a classificação na Lista.',
   },
   'unknown-category': {
     title: 'Categoria fora da DRE',
-    fix: 'A categoria não é o nome de nenhuma conta da DRE Unidades (maiúsculas não importam, acentos e espaços sim).',
+    fix: `A categoria não é o nome de nenhuma conta da ${sheet} (maiúsculas não importam, acentos e espaços sim).`,
   },
   'no-unit': {
-    title: 'Sem unidade',
-    fix: 'O lançamento não tem unidade (coluna Unidade vazia), então não entra na DRE de nenhuma unidade, só em "Todas as unidades". Confira a unidade da classificação na aba Lista.',
+    title: `Sem ${segment.label.toLowerCase()}`,
+    fix: `O lançamento não tem ${segment.label.toLowerCase()} (coluna ${segment.label} vazia), então só entra em "${segment.all}". Confira o lançamento no fluxo de caixa.`,
   },
   'no-issue-date': {
     title: 'Sem data de emissão',
     fix: 'Na competência, o mês vem da data de emissão. Lançamentos pagos no período sem essa data ficam de fora.',
   },
-}
+})
+const REASONS = computed(() => reasonsFor(props.layout))
 
 const count = computed(() => sum(props.groups.map((group) => group.count)))
 const total = computed(() => sum(props.groups.map((group) => group.total)))
 const sections = computed(() =>
-  (Object.keys(REASONS) as OutsideReason[])
-    .map((reason) => ({ reason, ...REASONS[reason], groups: props.groups.filter((group) => group.reason === reason) }))
+  (Object.keys(REASONS.value) as OutsideReason[])
+    .map((reason) => ({ reason, ...REASONS.value[reason], groups: props.groups.filter((group) => group.reason === reason) }))
     .filter((section) => section.groups.length),
 )
 const plural = (n: number) => (n === 1 ? 'lançamento' : 'lançamentos')

@@ -1,6 +1,6 @@
 # Boatlux · DRE
 
-Painel do fechamento financeiro da **Boatlux**. Importe a planilha de fechamento e veja a DRE recalculada por regime e unidade, indicadores, pontos de análise, meta de lucro, gráficos, dívidas e estoque.
+Painel do fechamento financeiro da **Boatlux** e da **RS Náutica**. Importe a planilha de fechamento de cada operação e veja a DRE recalculada por regime e unidade (ou banco), indicadores, pontos de análise, meta de lucro, gráficos, dívidas e estoque.
 
 Todo o processamento acontece **no navegador**, e nenhum dado é enviado para servidores.
 
@@ -9,7 +9,8 @@ Todo o processamento acontece **no navegador**, e nenhum dado é enviado para se
 ## Como usar
 
 1. Arraste a planilha de fechamento (`.xlsx`) para a página inicial.
-2. A DRE abre no último mês encerrado, no regime e na unidade que estavam escolhidos na planilha. Importar outra planilha substitui a anterior.
+2. A operação é reconhecida pela planilha, e a DRE abre no último mês encerrado, no regime e no filtro que estavam escolhidos nela.
+3. As duas operações podem ficar abertas ao mesmo tempo: o seletor **Boatlux | RS Náutica** no cabeçalho alterna entre elas. Importar outra planilha da mesma operação substitui a anterior.
 
 ## Funcionalidades
 
@@ -30,7 +31,17 @@ Todo o processamento acontece **no navegador**, e nenhum dado é enviado para se
 
 ## Formato da planilha
 
-- **DRE Unidades** (obrigatória; a DRE Geral é ignorada): seletores de regime (B2) e unidade (B3), linha dos meses (1 a 12) com a dos anos logo abaixo e a linha "Receita operacional bruta". Os blocos são separados por linhas em branco: um bloco de uma linha é um **resultado**, um cabeçalho igual à soma das linhas abaixo é um **grupo**, e um cabeçalho seguido de outro título em maiúsculas é uma **seção**. A coluna "Acumulado" é ignorada. Sem a linha "Saldo inicial", o "Saldo final" é tratado como resultado do mês (soma no acumulado) e o saldo de caixa não aparece.
+Há dois modelos, reconhecidos pela aba da DRE:
+
+| Modelo | Aba da DRE | Filtros no topo da aba | Filtro da DRE |
+|---|---|---|---|
+| Boatlux | DRE Unidades | B2 regime, B3 unidade | Unidade, em caixa e competência |
+| RS Náutica | DRE Geral | B1 regime, B2 banco (TODAS, Santander PJ, Sicredi...) | Banco, só em caixa (na competência os lançamentos não têm banco e a planilha soma todos) |
+
+A Boatlux vale quando a DRE Unidades tem receita; a planilha da RS também tem uma DRE Unidades, mas zerada. Na RS, a categoria do fluxo de caixa fica na coluna "Classificações" e o saldo de caixa é o "Saldo final" logo depois do "Saldo inicial" (o "SALDO FINAL" acima dele é o resultado do mês).
+
+
+- **DRE Unidades** (Boatlux) ou **DRE Geral** (RS Náutica): seletores de regime (B2) e unidade (B3), linha dos meses (1 a 12) com a dos anos logo abaixo e a linha "Receita operacional bruta". Os blocos são separados por linhas em branco: um bloco de uma linha é um **resultado**, um cabeçalho igual à soma das linhas abaixo é um **grupo**, e um cabeçalho seguido de outro título em maiúsculas é uma **seção**. A coluna "Acumulado" é ignorada. Sem a linha "Saldo inicial", o "Saldo final" é tratado como resultado do mês (soma no acumulado) e o saldo de caixa não aparece.
 - As contas somam o fluxo de caixa com `SOMASES`/`SUMIFS` pela coluna **Categoria**, com a mesma regra do Excel: maiúsculas não importam, acentos e espaços sim. Totais e resultados seguem as fórmulas `SOMA`, `+` e `−` de cada mês. Uma célula com valor digitado mantém o valor da planilha em qualquer regime (a página avisa).
 - **Fluxo de Caixa**: colunas Categoria, Valor de movimento (ou Valor e Movimentação), Data pagto, Mês/Ano Cx., Data de emissão, Mês/Ano Comp., Banco, Classificação C.A, Histórico e Unidade.
 - **Dívidas**: aba com "Dívida" no nome, uma linha por dívida, a coluna "Saldo" e uma coluna por mês (`mm/aaaa`) com a parcela. A leitura para na linha "Total"; o total do app soma todas as dívidas.
@@ -97,7 +108,7 @@ src/
 ├── domain/                 # Regras de negócio puras (sem Vue nem bibliotecas)
 │   ├── shared.ts           # Period, parseNumber, ratio, relativeChange...
 │   ├── ingestion/          # SourceFile, RawTable, porta FileParser, leitura de cabeçalhos
-│   ├── dre/                # DreReport (DRE recalculada), DreBasis (regime e unidade), DreFormula, Ledger (fluxo de caixa)
+│   ├── dre/                # DreReport (DRE recalculada), DreLayout (modelos Boatlux e RS), DreBasis (regime e filtro), DreFormula, Ledger
 │   ├── debts/              # Cronograma e situação das dívidas
 │   ├── stock/              # Cotas em estoque
 │   └── analysis/           # Insight (pontos de análise)

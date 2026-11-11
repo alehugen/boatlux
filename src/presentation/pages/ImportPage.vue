@@ -2,6 +2,7 @@
 import { PhArrowRight } from '@phosphor-icons/vue'
 import { computed, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import type { CompanyId } from '@/domain/dre'
 import FileDropzone from '@/presentation/components/FileDropzone.vue'
 import PageBand from '@/presentation/components/PageBand.vue'
 import { Button } from '@/presentation/components/ui/button'
@@ -9,19 +10,27 @@ import { useReport } from '@/presentation/composables/useReport'
 import { formatPeriod } from '@/presentation/format'
 
 const router = useRouter()
-const { report, isImporting, error, importFile, clearError } = useReport()
+const { companies, isImporting, error, importFile, selectCompany, clearError } = useReport()
 onBeforeUnmount(clearError)
 
-/** A planilha importada sem erro abre direto na DRE. */
+/** A planilha importada sem erro abre direto na DRE da operação dela (Boatlux ou RS Náutica). */
 async function onSelect(file: File) {
   if (await importFile(file)) await router.push({ name: 'dre' })
 }
 
-const opened = computed(() => {
-  const current = report.value
-  if (!current?.periods.length) return null
-  return { name: current.name, periods: `${formatPeriod(current.periods[0]!)} a ${formatPeriod(current.periods.at(-1)!)}` }
-})
+/** As planilhas já abertas, uma por operação, para voltar à DRE de qualquer uma. */
+const opened = computed(() =>
+  companies.value.flatMap(({ id, company, report }) =>
+    report.periods.length
+      ? [{ id, company, name: report.name, periods: `${formatPeriod(report.periods[0]!)} a ${formatPeriod(report.periods.at(-1)!)}` }]
+      : [],
+  ),
+)
+
+function open(id: CompanyId) {
+  selectCompany(id)
+  router.push({ name: 'dre' })
+}
 </script>
 
 <template>
@@ -29,7 +38,7 @@ const opened = computed(() => {
     <div class="max-w-3xl pt-8">
       <h1 class="text-[2.45rem] leading-tight">Importe o fechamento financeiro</h1>
       <p class="mt-3 max-w-[60ch] text-lg leading-relaxed text-band-muted">
-        Arraste a planilha de fechamento da Boatlux. Ela abre direto no resultado do último mês encerrado.
+        Arraste a planilha de fechamento da Boatlux ou da RS Náutica. A operação é reconhecida pela planilha, que abre direto no resultado do último mês encerrado.
       </p>
     </div>
 
@@ -45,16 +54,16 @@ const opened = computed(() => {
       </p>
     </Transition>
 
-    <div v-if="opened" class="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-band-border pt-6">
-      <p class="min-w-0 text-band-muted">
-        Planilha aberta: <span class="text-band-foreground">{{ opened.name }}</span>, {{ opened.periods }}
-      </p>
-      <Button as-child>
-        <RouterLink :to="{ name: 'dre' }">
-          Voltar para a DRE
+    <ul v-if="opened.length" class="mt-6 divide-y divide-band-border border-t border-band-border">
+      <li v-for="item in opened" :key="item.id" class="flex flex-wrap items-center justify-between gap-4 py-5">
+        <p class="min-w-0 text-band-muted">
+          <span class="text-band-foreground">{{ item.company }}</span>: {{ item.name }}, {{ item.periods }}
+        </p>
+        <Button @click="open(item.id)">
+          {{ opened.length > 1 ? `Abrir a DRE da ${item.company}` : 'Voltar para a DRE' }}
           <PhArrowRight aria-hidden="true" />
-        </RouterLink>
-      </Button>
-    </div>
+        </Button>
+      </li>
+    </ul>
   </PageBand>
 </template>

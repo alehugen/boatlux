@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProfitTargetBase } from '@/application'
-import { DreReport, type LedgerEntry } from '@/domain/dre'
+import { BOATLUX_LAYOUT, DreReport, RS_NAUTICA_LAYOUT, type LedgerEntry } from '@/domain/dre'
 import AppFooter from '@/presentation/components/AppFooter.vue'
 import BasisSelect from '@/presentation/components/BasisSelect.vue'
 import { Select } from '@/presentation/components/ui/select'
@@ -528,6 +528,7 @@ describe('CellBreakdown', () => {
     label: 'DESPESAS OPERACIONAIS',
     period: { year: 2026, month: 3 },
     basis: { regime: 'cash' as const, unit: null },
+    segment: BOATLUX_LAYOUT.segment,
     value: -700,
     total: -600,
     difference: -100,
@@ -837,12 +838,30 @@ describe('TrendChart', () => {
   })
 })
 
+describe('CellBreakdown com banco escolhido (RS Náutica)', () => {
+  it('não repete a coluna Banco nem mostra a coluna Unidade vazia', () => {
+    const entry = {
+      date: '2026-02-10', issueDate: '', description: 'Turma', category: 'Escola Náutica', account: '',
+      unit: '', bank: '02 - SICREDI', value: 40, cashPeriod: { year: 2026, month: 2 }, accrualPeriod: null,
+    }
+    const breakdown = {
+      label: 'Escola Náutica', period: { year: 2026, month: 2 }, basis: { regime: 'cash' as const, unit: '02 - SICREDI' },
+      segment: RS_NAUTICA_LAYOUT.segment, value: 40, total: 40, difference: 0, entries: [entry],
+      accounts: [{ label: 'Escola Náutica', total: 40, count: 1 }],
+    }
+    const headers = mount(CellBreakdown, { props: { breakdown } }).findAll('thead th').map((th) => th.text())
+    expect(headers).not.toContain('Banco')
+    expect(headers).not.toContain('Unidade')
+  })
+})
+
 describe('CellBreakdown com unidade escolhida', () => {
   it('não repete a coluna Unidade, que só diria o filtro', () => {
     const breakdown = {
       label: 'Vendas',
       period: { year: 2026, month: 2 },
       basis: { regime: 'cash' as const, unit: 'Repasse' },
+      segment: BOATLUX_LAYOUT.segment,
       value: 10,
       total: 10,
       difference: 0,

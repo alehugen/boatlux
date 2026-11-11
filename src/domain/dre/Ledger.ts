@@ -22,7 +22,8 @@ export interface LedgerEntry {
 }
 
 const COLUMN_ALIASES = {
-  category: ['CATEGORIA'],
+  // Na RS, a coluna da categoria se chama "Classificações".
+  category: ['CATEGORIA', 'CLASSIFICACOES'],
   account: ['CLASSIFICACAOCA', 'CLASSIFICACAO'],
   signedValue: ['VALORDEMOVIMENTO'],
   value: ['VALOR'],

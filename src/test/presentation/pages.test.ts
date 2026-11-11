@@ -9,7 +9,7 @@ import FileDropzone from '@/presentation/components/FileDropzone.vue'
 import ImportPage from '@/presentation/pages/ImportPage.vue'
 import NotFoundPage from '@/presentation/pages/NotFoundPage.vue'
 import { routes } from '@/presentation/router'
-import { dreRows, xlsxFile } from '@/test/fixtures'
+import { dreRows, rsFile, xlsxFile } from '@/test/fixtures'
 import { mountWithProviders } from './mountWithProviders'
 
 const stubs = { RouterLink: RouterLinkStub }
@@ -73,8 +73,20 @@ describe('ImportPage', () => {
   it('com uma planilha aberta, oferece voltar para a DRE', async () => {
     await useReport().importFile(xlsxFile('DRE 2026.xlsx', { 'DRE Unidades': dreRows() }))
     const { page } = await mountImport()
-    expect(page.text()).toContain('Planilha aberta: DRE 2026, jan/26 a mar/26')
-    expect(page.findComponent(RouterLinkStub).props('to')).toEqual({ name: 'dre' })
+    expect(page.text()).toContain('Boatlux: DRE 2026, jan/26 a mar/26')
+    expect(page.text()).toContain('Voltar para a DRE')
+  })
+
+  it('com as duas operações abertas, lista cada planilha e abre a DRE da escolhida', async () => {
+    await useReport().importFile(xlsxFile('DRE 2026.xlsx', { 'DRE Unidades': dreRows() }))
+    await useReport().importFile(rsFile())
+    const { page } = await mountImport()
+    const items = page.findAll('li').map((li) => li.text())
+    expect(items[0]).toContain('Boatlux: DRE 2026')
+    expect(items[1]).toContain('RS Náutica: Fechamento Financeiro 2026 - RS Náutica')
+    expect(useReport().activeId.value).toBe('rs-nautica')
+    await page.findAll('button').find((b) => b.text().includes('Abrir a DRE da Boatlux'))!.trigger('click')
+    expect(useReport().activeId.value).toBe('boatlux')
   })
 })
 
