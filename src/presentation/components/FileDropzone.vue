@@ -4,7 +4,8 @@ import { computed, ref } from 'vue'
 import { MAX_FILE_SIZE_MB, SUPPORTED_EXTENSIONS } from '@/domain/ingestion'
 
 defineProps<{ disabled?: boolean }>()
-const emit = defineEmits<{ select: [file: File] }>()
+/** Aceita várias planilhas de uma vez (ex.: a da Boatlux e a da RS Náutica). */
+const emit = defineEmits<{ select: [files: File[]] }>()
 
 const dragDepth = ref(0)
 const isDragging = computed(() => dragDepth.value > 0)
@@ -13,14 +14,14 @@ const extensions = SUPPORTED_EXTENSIONS.join(' ou ')
 
 function onDrop(event: DragEvent) {
   dragDepth.value = 0
-  const file = event.dataTransfer?.files[0]
-  if (file) emit('select', file)
+  const files = [...(event.dataTransfer?.files ?? [])]
+  if (files.length) emit('select', files)
 }
 
 function onChange(event: Event) {
   const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (file) emit('select', file)
+  const files = [...(input.files ?? [])]
+  if (files.length) emit('select', files)
   input.value = ''
 }
 </script>
@@ -45,12 +46,12 @@ function onChange(event: Event) {
     </span>
     <span class="flex flex-col gap-1.5">
       <span class="text-[1.375rem] text-band-foreground">
-        {{ disabled ? 'Importando a planilha…' : isDragging ? 'Solte para importar' : 'Arraste a planilha aqui ou clique para escolher' }}
+        {{ disabled ? 'Importando…' : isDragging ? 'Solte para importar' : 'Arraste as planilhas aqui ou clique para escolher' }}
       </span>
       <span class="text-[0.95rem] text-band-muted">
-        Arquivos {{ extensions }}, até {{ MAX_FILE_SIZE_MB }} MB. A planilha não sai do seu computador.
+        Uma ou mais, em {{ extensions }}, até {{ MAX_FILE_SIZE_MB }} MB cada. As planilhas não saem do seu computador.
       </span>
     </span>
-    <input type="file" class="sr-only" :accept="accept" :disabled="disabled" @change="onChange" />
+    <input type="file" multiple class="sr-only" :accept="accept" :disabled="disabled" @change="onChange" />
   </label>
 </template>

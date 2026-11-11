@@ -11,7 +11,7 @@ import {
   usePageLoading,
 } from '@/presentation/composables/usePageLoading'
 import { useTweenedNumbers } from '@/presentation/composables/useTween'
-import { boatluxFile, dreRows, xlsxFile } from '@/test/fixtures'
+import { boatluxFile, dreRows, xlsxFile, rsFile } from '@/test/fixtures'
 import { createApp, defineComponent, nextTick, ref } from 'vue'
 
 /** Roda um composable dentro de um componente montado (para hooks de ciclo de vida). */
@@ -54,6 +54,22 @@ describe('useReport', () => {
     expect(await importFile(boatluxFile())).toBeNull()
     await first
     expect(report.value?.name).toBe('DRE')
+  })
+
+  it('importa várias planilhas: cada uma na sua operação, com os erros de cada arquivo', async () => {
+    const { importFiles, companies, activeId, error } = useReport()
+    const imported = await importFiles([boatluxFile(), new File(['a;b'], 'tabela.csv'), rsFile()])
+    expect(imported.map((r) => r.layout.id)).toEqual(['boatlux', 'rs-nautica'])
+    expect(companies.value.map((c) => c.id)).toEqual(['boatlux', 'rs-nautica'])
+    expect(activeId.value).toBe('boatlux')
+    expect(error.value).toMatch(/^Formato não suportado: tabela.csv/)
+  })
+
+  it('avisa quando duas planilhas são da mesma operação e fica com a última', async () => {
+    const { importFiles, report, error } = useReport()
+    await importFiles([xlsxFile('Antiga.xlsx', { 'DRE Unidades': dreRows() }), boatluxFile()])
+    expect(report.value?.name).toBe('Fechamento 2026')
+    expect(error.value).toBe('Antiga.xlsx e Fechamento 2026.xlsx são da mesma operação (Boatlux): ficou Fechamento 2026.xlsx.')
   })
 
   it('explica erros inesperados', async () => {

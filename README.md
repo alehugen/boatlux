@@ -8,7 +8,7 @@ Todo o processamento acontece **no navegador**, e nenhum dado é enviado para se
 
 ## Como usar
 
-1. Arraste a planilha de fechamento (`.xlsx`) para a página inicial.
+1. Arraste a planilha de fechamento (`.xlsx`) para a página inicial. Dá para arrastar ou escolher várias de uma vez (ex.: a da Boatlux e a da RS Náutica): cada uma vai para a sua operação, e um arquivo com erro não impede os outros.
 2. A operação é reconhecida pela planilha, e a DRE abre no último mês encerrado, no regime e no filtro que estavam escolhidos nela.
 3. As duas operações podem ficar abertas ao mesmo tempo: o seletor **Boatlux | RS Náutica** no cabeçalho alterna entre elas. Importar outra planilha da mesma operação substitui a anterior.
 

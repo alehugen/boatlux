@@ -22,21 +22,43 @@ const useReportStore = defineStore('report', () => {
     }),
   )
 
-  async function importFile(file: File): Promise<DreReport | null> {
-    if (isImporting.value) return null
+  /**
+   * Importa uma ou mais planilhas, uma de cada vez: cada uma vai para a sua operação, e um arquivo com erro não
+   * impede os outros. Duas da mesma operação: fica a última, com um aviso. A operação na tela passa a ser a da
+   * primeira planilha importada. Devolve as planilhas importadas, na ordem dos arquivos.
+   */
+  async function importFiles(files: readonly File[]): Promise<DreReport[]> {
+    if (isImporting.value || !files.length) return []
     isImporting.value = true
     error.value = null
+    const problems: string[] = []
+    const imported: { file: File; report: DreReport }[] = []
     try {
-      const imported = await container.importFile.execute(file)
-      reports.value = { ...reports.value, [imported.layout.id]: imported }
-      activeId.value = imported.layout.id
-      return imported
-    } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : `Erro inesperado ao importar ${file.name}`
-      return null
+      for (const file of files) {
+        try {
+          const report = await container.importFile.execute(file)
+          const twin = imported.find((item) => item.report.layout.id === report.layout.id)
+          if (twin) {
+            problems.push(`${twin.file.name} e ${file.name} são da mesma operação (${report.layout.company}): ficou ${file.name}.`)
+          }
+          imported.push({ file, report })
+          reports.value = { ...reports.value, [report.layout.id]: report }
+        } catch (cause) {
+          const message = cause instanceof Error ? cause.message : `Erro inesperado ao importar ${file.name}`
+          // Com vários arquivos, diz de qual é cada erro (a mensagem pode já citar o nome).
+          problems.push(files.length > 1 && !message.includes(file.name) ? `${file.name}: ${message}` : message)
+        }
+      }
+      if (imported[0]) activeId.value = imported[0].report.layout.id
+      error.value = problems.length ? problems.join('\n') : null
+      return imported.map((item) => item.report)
     } finally {
       isImporting.value = false
     }
+  }
+
+  async function importFile(file: File): Promise<DreReport | null> {
+    return (await importFiles([file]))[0] ?? null
   }
 
   const selectCompany = (id: CompanyId) => {
@@ -44,7 +66,7 @@ const useReportStore = defineStore('report', () => {
   }
   const clearError = () => (error.value = null)
 
-  return { report, companies, activeId, isImporting, error, importFile, selectCompany, clearError }
+  return { report, companies, activeId, isImporting, error, importFile, importFiles, selectCompany, clearError }
 })
 
 export function useReport() {
@@ -52,6 +74,7 @@ export function useReport() {
   return {
     ...storeToRefs(store),
     importFile: store.importFile,
+    importFiles: store.importFiles,
     selectCompany: store.selectCompany,
     clearError: store.clearError,
   }

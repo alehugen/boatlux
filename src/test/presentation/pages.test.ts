@@ -53,13 +53,30 @@ describe('ImportPage', () => {
 
   it('abre direto a DRE quando a planilha é importada sem erros', async () => {
     const { page, router } = await mountImport()
-    page.getComponent(FileDropzone).vm.$emit('select', xlsxFile('DRE 2026.xlsx', { 'DRE Unidades': dreRows() }))
+    page.getComponent(FileDropzone).vm.$emit('select', [xlsxFile('DRE 2026.xlsx', { 'DRE Unidades': dreRows() })])
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('dre'))
+  })
+
+  it('importa as duas planilhas de uma vez e abre a DRE da primeira', async () => {
+    const { page, router } = await mountImport()
+    page.getComponent(FileDropzone).vm.$emit('select', [rsFile(), xlsxFile('DRE 2026.xlsx', { 'DRE Unidades': dreRows() })])
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('dre'))
+    expect(useReport().companies.value.map((c) => c.id)).toEqual(['boatlux', 'rs-nautica'])
+    expect(useReport().activeId.value).toBe('rs-nautica')
+  })
+
+  it('com erro em uma das planilhas, abre as outras e fica na página mostrando o erro', async () => {
+    const { page, router } = await mountImport()
+    page.getComponent(FileDropzone).vm.$emit('select', [rsFile(), new File([], 'vazio.xlsx')])
+    await vi.waitFor(() => expect(page.find('[role="alert"]').exists()).toBe(true))
+    expect(router.currentRoute.value.name).toBe('import')
+    expect(page.get('[role="alert"]').text()).toBe('O arquivo está vazio: vazio.xlsx')
+    expect(page.text()).toContain('RS Náutica: Fechamento Financeiro 2026 - RS Náutica')
   })
 
   it('com erro, fica na página e mostra o erro', async () => {
     const { page, router } = await mountImport()
-    page.getComponent(FileDropzone).vm.$emit('select', new File([], 'vazio.xlsx'))
+    page.getComponent(FileDropzone).vm.$emit('select', [new File([], 'vazio.xlsx')])
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('import')

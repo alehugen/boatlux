@@ -10,12 +10,16 @@ import { useReport } from '@/presentation/composables/useReport'
 import { formatPeriod } from '@/presentation/format'
 
 const router = useRouter()
-const { companies, isImporting, error, importFile, selectCompany, clearError } = useReport()
+const { companies, isImporting, error, importFiles, selectCompany, clearError } = useReport()
 onBeforeUnmount(clearError)
 
-/** A planilha importada sem erro abre direto na DRE da operação dela (Boatlux ou RS Náutica). */
-async function onSelect(file: File) {
-  if (await importFile(file)) await router.push({ name: 'dre' })
+/**
+ * Planilhas importadas sem erro abrem direto na DRE (da primeira delas; o seletor do cabeçalho troca de operação).
+ * Com algum erro, fica aqui para mostrar o que houve, com as planilhas que abriram listadas abaixo.
+ */
+async function onSelect(files: File[]) {
+  const imported = await importFiles(files)
+  if (imported.length && !error.value) await router.push({ name: 'dre' })
 }
 
 /** As planilhas já abertas, uma por operação, para voltar à DRE de qualquer uma. */
@@ -38,7 +42,7 @@ function open(id: CompanyId) {
     <div class="max-w-3xl pt-8">
       <h1 class="text-[2.45rem] leading-tight">Importe o fechamento financeiro</h1>
       <p class="mt-3 max-w-[60ch] text-lg leading-relaxed text-band-muted">
-        Arraste a planilha de fechamento da Boatlux ou da RS Náutica. A operação é reconhecida pela planilha, que abre direto no resultado do último mês encerrado.
+        Arraste a planilha de fechamento da Boatlux, a da RS Náutica ou as duas juntas. A operação é reconhecida pela planilha, que abre direto no resultado do último mês encerrado.
       </p>
     </div>
 
@@ -48,7 +52,7 @@ function open(id: CompanyId) {
       <p
         v-if="error"
         role="alert"
-        class="mt-4 rounded-sm border-l-4 border-l-band-loss bg-white/5 px-4 py-3 text-sm text-band-foreground"
+        class="mt-4 rounded-sm border-l-4 border-l-band-loss bg-white/5 px-4 py-3 text-sm whitespace-pre-line text-band-foreground"
       >
         {{ error }}
       </p>
