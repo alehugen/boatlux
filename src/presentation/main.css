@@ -118,8 +118,10 @@
   --color-water-soft: var(--water-soft);
   --color-result: var(--result);
   --color-result-foreground: var(--result-foreground);
-  --color-result-loss: var(--result-loss);
-  --color-result-highlight: var(--result-highlight);
+  --color-section: var(--section);
+  --color-section-foreground: var(--section-foreground);
+  --color-group: var(--group);
+  --color-group-foreground: var(--group-foreground);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -178,11 +180,16 @@
   --water-foreground: #00244f;
   --water-soft: #e0f4fd;
 
-  /* Linhas de resultado da DRE (lucro bruto, margem, EBITDA...): a leitura principal da tabela. */
-  --result: #0b4976;
+  /*
+   * Faixas da DRE, como na planilha: resultado (lucro bruto, margem, EBITDA...) no tom mais escuro,
+   * seção (ex.: despesas operacionais) em azul forte e grupo (ex.: despesas com pessoal) em azul claro.
+   */
+  --result: #00244f;
   --result-foreground: #ffffff;
-  --result-loss: #ffb3c1;
-  --result-highlight: #1b6299;
+  --section: #0d55a0;
+  --section-foreground: #ffffff;
+  --group: #2c78c0;
+  --group-foreground: #ffffff;
 
 
   --elevation-1: 0 1px 2px rgb(0 36 79 / 0.05), 0 3px 8px -2px rgb(0 36 79 / 0.07), 0 14px 30px -18px rgb(0 36 79 / 0.22);
@@ -228,8 +235,10 @@
 
   --result: #12bff9;
   --result-foreground: #00244f;
-  --result-loss: #8a1430;
-  --result-highlight: #6fd8fb;
+  --section: #1d63ad;
+  --section-foreground: #ffffff;
+  --group: #134575;
+  --group-foreground: #e6f1fb;
 
   --elevation-1: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 8 20 / 0.4), 0 10px 24px -12px rgb(0 8 20 / 0.6);
   --elevation-2: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 2px 4px rgb(0 8 20 / 0.4), 0 18px 36px -14px rgb(0 8 20 / 0.7);

@@ -309,7 +309,11 @@ const expenseItems = computed(() =>
           Valor digitado na planilha, que não muda com o regime nem com a unidade:
           <span class="text-foreground">{{ report.staticLines.map(prettifyLabel).join(', ') }}</span>.
         </p>
-        <DreTable :report="report" :highlight="analysis.indexes" />
+        <DreTable :report="report" :highlight="analysis.indexes" :basis="basisLabel || undefined">
+          <template v-if="report.canChangeBasis" #filters>
+            <BasisSelect :basis="basis" :units="report.units" compact tone="surface" @change="setBasis" />
+          </template>
+        </DreTable>
       </PageSection>
 
       <PageSection v-if="report.debts || report.stock" id="dividas-estoque" class="space-y-5">

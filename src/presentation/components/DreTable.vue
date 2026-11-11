@@ -2,6 +2,7 @@
 import { PhCaretRight } from '@phosphor-icons/vue'
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { DreLineKind, DreMetric, type DreLine, type DreReport } from '@/domain/dre'
+import { periodKey } from '@/domain/shared'
 import { useCellBreakdown } from '@/presentation/composables/useCellBreakdown'
 import { formatPercent, formatPeriod, formatPeriodLong, prettifyLabel } from '@/presentation/format'
 import { Checkbox } from '@/presentation/components/ui/checkbox'
@@ -13,7 +14,10 @@ import InfoTip from './InfoTip.vue'
 import MonthFilter from './MonthFilter.vue'
 import SegmentedControl from './SegmentedControl.vue'
 
-const props = defineProps<{ report: DreReport; highlight: number[] }>()
+/** `basis`: regime e unidade, no subtítulo. O slot `filters` aparece só em tela cheia, para trocar de unidade sem sair dela. */
+const props = defineProps<{ report: DreReport; highlight: number[]; basis?: string }>()
+defineSlots<{ filters?: () => unknown }>()
+const subtitle = computed(() => [props.report.name, props.basis].filter(Boolean).join(' · '))
 const { open, breakdown, canInspect, inspect } = useCellBreakdown(() => props.report)
 
 const TABLE_INFO =
@@ -29,7 +33,11 @@ const allMonths = () => props.report.periods.map((_, index) => index)
 const shown = ref(allMonths())
 /** Com poucos meses (ex.: os últimos 3 para apresentar), a tabela fica centralizada em vez de colada à direita. */
 const compact = computed(() => shown.value.length <= 6)
-watch(() => props.report, () => (shown.value = allMonths()))
+/** Trocar regime ou unidade recalcula o relatório com os mesmos meses: a escolha de meses só volta a "todos" com outra planilha. */
+watch(
+  () => props.report.periods.map(periodKey).join(),
+  () => (shown.value = allMonths()),
+)
 const expanded = ref(new Set(props.report.lines.filter((l) => l.kind === DreLineKind.Section).map((l) => l.id)))
 
 const integer = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
@@ -64,16 +72,23 @@ function format(line: DreLine, index: number, as: Mode) {
   return base && value ? formatPercent(value / base) : '–'
 }
 
-const isResult = (line: DreLine) => line.kind === DreLineKind.Result
-const isTotal = (line: DreLine) => !line.parentId && line.kind !== DreLineKind.Balance && !isResult(line)
-const valueColor = (line: DreLine, index: number) => {
-  const negative = (line.values[index] ?? 0) < 0
-  if (isResult(line)) return negative ? 'text-result-loss' : undefined
-  if (negative) return 'text-destructive'
-  return isTotal(line) ? 'text-foreground' : undefined
+/**
+ * Faixas como na planilha: resultado no tom mais escuro, seção em azul forte e grupo em azul claro,
+ * com o rótulo em maiúsculas. Contas ficam no fundo do card, sem cor nos negativos.
+ */
+const BANDS: Partial<Record<DreLine['kind'], { bg: string; text: string }>> = {
+  [DreLineKind.Result]: { bg: 'bg-result', text: 'text-result-foreground' },
+  [DreLineKind.Section]: { bg: 'bg-section', text: 'text-section-foreground' },
+  [DreLineKind.Group]: { bg: 'bg-group', text: 'text-group-foreground' },
+}
+const band = (line: DreLine) => BANDS[line.kind]
+const rowClass = (line: DreLine) => {
+  const tone = band(line)
+  if (tone) return [tone.bg, tone.text, 'uppercase tracking-[0.02em]']
+  return ['hover:bg-muted/60', line.parentId ? 'text-body' : 'text-foreground']
 }
 const cellBackground = (line: DreLine, index: number) =>
-  props.highlight.includes(index) ? (isResult(line) ? 'bg-result-highlight' : 'bg-water-soft/70') : undefined
+  props.highlight.includes(index) ? (band(line) ? 'bg-white/15' : 'bg-water-soft/70') : undefined
 
 const cell = (line: DreLine, index: number) => format(line, index, mode.value)
 const CELL_TEXT = 'inline-grid justify-items-end after:invisible after:content-[attr(data-alt)] after:[grid-area:1/1]'
@@ -96,9 +111,10 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
 </script>
 
 <template>
-  <ExpandablePanel v-slot="{ expanded: fullscreen, expand }" title="DRE completa" :subtitle="report.name" class="flex flex-col">
+  <ExpandablePanel v-slot="{ expanded: fullscreen, expand }" title="DRE completa" :subtitle="subtitle" class="flex flex-col">
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
       <div class="flex flex-wrap items-center gap-3">
+        <slot v-if="fullscreen" name="filters" />
         <SegmentedControl v-model="mode" :options="MODES" label="Exibir" />
         <MonthFilter v-if="report.periods.length > 1" v-model="shown" :periods="report.periods" />
       </div>
@@ -151,19 +167,12 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
             v-for="line in rows"
             :key="line.id"
             class="transition-colors duration-(--duration-fast)"
-            :class="
-              isResult(line)
-                ? 'bg-result text-[0.9375rem] text-result-foreground'
-                : [
-                    'hover:bg-muted/60',
-                    isTotal(line) ? 'text-foreground' : 'text-body',
-                  ]
-            "
+            :class="rowClass(line)"
           >
             <th
               scope="row"
-              class="sticky left-0 z-[1] px-3 text-left [font-weight:inherit] sm:whitespace-nowrap"
-              :class="[isResult(line) ? 'bg-result py-2.5' : 'bg-card py-1.5', STICKY_EDGE, scrolledX && 'after:opacity-100']"
+              class="sticky left-0 z-1 px-3 text-left [font-weight:inherit] sm:whitespace-nowrap"
+              :class="[band(line)?.bg ?? 'bg-card', band(line) ? 'py-2' : 'py-1.5', STICKY_EDGE, scrolledX && 'after:opacity-100']"
               :style="{ paddingLeft: `${0.75 + depth(line) * 1.25}rem` }"
             >
               <button
@@ -188,7 +197,7 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
               v-for="i in shown"
               :key="i"
               class="px-3 text-right figure whitespace-nowrap"
-              :class="[isResult(line) ? 'py-2.5' : 'py-1.5', compact && 'px-5', cellBackground(line, i), valueColor(line, i)]"
+              :class="[band(line) ? 'py-2' : 'py-1.5', compact && 'px-5', cellBackground(line, i)]"
             >
               <button
                 v-if="(line.values[i] ?? 0) !== 0 && canInspect(line)"

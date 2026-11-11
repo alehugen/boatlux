@@ -1,3 +1,4 @@
+import { h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -398,27 +399,38 @@ describe('DreTable', () => {
     expect(headers()).toEqual(['jan/26', 'fev/26', 'mar/26'])
   })
 
-  it('destaca as linhas de resultado com fundo próprio, os totais em cor forte e os negativos em vermelho', async () => {
+  it('pinta resultado, seção e grupo em faixas como na planilha, sem cor nos negativos', async () => {
     const wrapper = mountTable()
     await wrapper.findAll('tbody button').find((b) => b.text() === 'Despesas com pessoal')!.trigger('click')
     const row = (label: string) => wrapper.findAll('tbody tr').find((tr) => tr.get('th').text() === label)!
-    const colors = (label: string) =>
-      row(label)
-        .findAll('td')
-        .map((td) =>
-          td.classes('text-result-loss')
-            ? 'resultado negativo'
-            : td.classes('text-destructive')
-              ? 'negativo'
-              : td.classes('text-foreground')
-                ? 'total'
-                : 'normal',
-        )
-    expect(colors('Receita operacional bruta')).toEqual(['total', 'total', 'total'])
-    expect(colors('Salários')).toEqual(['negativo', 'negativo', 'negativo'])
-    expect(row('Resultado líquido (EBITDA)').classes()).toContain('bg-result')
-    expect(colors('Resultado líquido (EBITDA)')).toEqual(['normal', 'normal', 'resultado negativo'])
-    expect(row('Receita operacional bruta').classes()).not.toContain('bg-result')
+    const tone = (label: string) => ['bg-result', 'bg-section', 'bg-group'].find((bg) => row(label).classes(bg)) ?? 'conta'
+    expect(tone('Resultado líquido (EBITDA)')).toBe('bg-result')
+    expect(tone('Despesas com pessoal')).toBe('bg-group')
+    expect(tone('Salários')).toBe('conta')
+    expect(row('Resultado líquido (EBITDA)').classes()).toContain('uppercase')
+    expect(row('Resultado líquido (EBITDA)').get('th').classes()).toContain('bg-result')
+    expect(wrapper.find('td.text-destructive').exists()).toBe(false)
+  })
+
+  it('em tela cheia, mostra os filtros do slot e o regime no subtítulo', async () => {
+    const host = document.body.appendChild(document.createElement('div'))
+    const wrapper = mountWithProviders(DreTable, {
+      props: { report, highlight: [2], basis: 'Caixa, Comercial' },
+      slots: { filters: () => h('p', { 'data-filters': '' }, 'Unidade') },
+      attachTo: host,
+    })
+    expect(wrapper.find('[data-filters]').exists()).toBe(false)
+    await wrapper.get('button[aria-label="Abrir em tela cheia"]').trigger('click')
+    await flushPromises()
+    const dialog = document.body.querySelector('[role="dialog"]')!
+    expect(dialog.querySelector('[data-filters]')).not.toBeNull()
+    expect(dialog.textContent).toContain('Caixa, Comercial')
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    await flushPromises()
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull()
+    wrapper.vm.$.appContext.app.unmount()
+    host.remove()
   })
 
   it('destaca a coluna do período selecionado', () => {
