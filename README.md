@@ -24,7 +24,7 @@ Todo o processamento acontece **no navegador**, e nenhum dado é enviado para se
 - **De cada R$ 100 vendidos:** a receita dividida entre impostos, custos, despesas e o que sobra (EBITDA).
 - **Gráficos:** para onde vai a receita, composição da receita e saldo de caixa.
 - **DRE completa** com grupos recolhíveis, valores (R$) ou AV%, escolha dos meses e tela cheia. Clicar em um valor abre os lançamentos que o compõem.
-- **Dívidas e estoque:** saldo devedor, parcelas do mês e última parcela de cada dívida; cotas em estoque agrupadas por embarcação.
+- **Dívidas e estoque:** saldo devedor, parcelas do mês e última parcela de cada dívida; cotas em estoque agrupadas por embarcação e cotas vendidas, com upgrades e trocas anotados.
 - **Menu de seções** fixo ao lado do conteúdo (no celular, uma faixa no topo), destacando a seção na tela.
 - **Filtros fixos:** ao rolar, regime, unidade e período continuam numa barra fixa no topo.
 - Filtro por mês ou acumulado do ano. A planilha é lida num Web Worker, sem travar a tela.
@@ -45,7 +45,7 @@ A Boatlux vale quando a DRE Unidades tem receita; a planilha da RS também tem u
 - As contas somam o fluxo de caixa com `SOMASES`/`SUMIFS` pela coluna **Categoria**, com a mesma regra do Excel: maiúsculas não importam, acentos e espaços sim. Totais e resultados seguem as fórmulas `SOMA`, `+` e `−` de cada mês. Uma célula com valor digitado mantém o valor da planilha em qualquer regime (a página avisa).
 - **Fluxo de Caixa**: colunas Categoria, Valor de movimento (ou Valor e Movimentação), Data pagto, Mês/Ano Cx., Data de emissão, Mês/Ano Comp., Banco, Classificação C.A, Histórico e Unidade.
 - **Dívidas**: aba com "Dívida" no nome, uma linha por dívida, a coluna "Saldo" e uma coluna por mês (`mm/aaaa`) com a parcela. A leitura para na linha "Total"; o total do app soma todas as dívidas.
-- **Estoque**: aba com "Estoque" no nome, com as colunas "Cotas disponíveis" e "Valor da cota". O código antes do traço agrupa as cotas por embarcação (J = jet ski, L = lancha).
+- **Estoque**: aba com "Estoque" no nome, com as colunas "Cotas disponíveis" e "Valor da cota". O código antes do traço agrupa as cotas por embarcação (J = jet ski, L = lancha). Opcional: uma célula "VENDIDAS" em qualquer coluna, com a cota, o valor ao lado e uma observação depois ("upgrade L20", "Troca (L20)"). Cotas vendidas saem do estoque, e trocas não entram no total vendido.
 - Arquivos vazios ou acima de 25 MB são recusados.
 
 ## Começando

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { debtOverview, readDebts } from '@/domain/debts'
 import { DreReport } from '@/domain/dre'
-import { readStock } from '@/domain/stock'
-import { DEBT_ROWS, dreRows, STOCK_ROWS } from '@/test/fixtures'
+import { movementOf, readStock } from '@/domain/stock'
+import { DEBT_ROWS, dreRows, STOCK_ROWS, STOCK_WITH_SOLD_ROWS } from '@/test/fixtures'
 
 const NOVEMBER = new Date(2026, 10, 7)
 
@@ -64,6 +64,44 @@ describe('readStock', () => {
     expect(readStock({ sheet: 'Lista', rows: STOCK_ROWS })).toBeNull()
     expect(readStock({ sheet: 'Estoque', rows: [['Nome', 'Quantidade']] })).toBeNull()
     expect(readStock({ sheet: 'Estoque', rows: [STOCK_ROWS[0]!] })).toBeNull()
+  })
+})
+
+describe('readStock com a lista de vendidas', () => {
+  const stock = readStock({ sheet: 'Estoque', rows: STOCK_WITH_SOLD_ROWS })!
+
+  it('tira do estoque as cotas que estão na lista de vendidas', () => {
+    expect(stock.items.map((item) => item.label)).toEqual(['L29 - 01', 'L29 - 02', 'L31 - 06'])
+    expect(stock.total).toBe(404000)
+  })
+
+  it('lê as vendidas com a observação; trocas ficam fora do total', () => {
+    const sold = stock.sold!
+    expect(sold.items).toHaveLength(6)
+    expect(sold.total).toBe(465000)
+    expect(sold.sales).toBe(5)
+    expect(sold.groups.map((group) => [group.label, group.total, group.exchanged])).toEqual([
+      ['J12', 12000, 0],
+      ['L13', 0, 69000],
+      ['L31', 453000, 0],
+    ])
+    expect(sold.items.find((item) => item.label === 'L13')!.movement).toEqual({ kind: 'exchange', from: 'L20' })
+    expect(sold.items.find((item) => item.label === 'L31 - 01')!.movement).toEqual({ kind: 'upgrade', from: 'L20' })
+  })
+
+  it.each([
+    ['upgrade L20', { kind: 'upgrade', from: 'L20' }],
+    ['Upgrade da L 20', { kind: 'upgrade', from: 'L20' }],
+    ['Troca (L20)', { kind: 'exchange', from: 'L20' }],
+    ['troca pela J12', { kind: 'exchange', from: 'J12' }],
+    ['Troca', { kind: 'exchange', from: '' }],
+    ['pago à vista', null],
+  ])('entende a observação "%s"', (note, movement) => {
+    expect(movementOf(note)).toEqual(movement)
+  })
+
+  it('sem lista de vendidas, sold fica vazio', () => {
+    expect(readStock({ sheet: 'Estoque', rows: STOCK_ROWS })!.sold).toBeNull()
   })
 })
 

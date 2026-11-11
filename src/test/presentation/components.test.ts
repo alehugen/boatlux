@@ -19,11 +19,13 @@ import SectionNav from '@/presentation/components/SectionNav.vue'
 import ProfitTarget from '@/presentation/components/ProfitTarget.vue'
 import SegmentedControl from '@/presentation/components/SegmentedControl.vue'
 import StatCard from '@/presentation/components/StatCard.vue'
+import StockCard from '@/presentation/components/StockCard.vue'
+import { readStock } from '@/domain/stock'
 import ThemeToggle from '@/presentation/components/ThemeToggle.vue'
 import TrendChart from '@/presentation/components/TrendChart.vue'
 import VChart from 'vue-echarts'
 import { useTheme } from '@/presentation/composables/useTheme'
-import { LEDGER_ROWS, dreRows } from '@/test/fixtures'
+import { LEDGER_ROWS, STOCK_WITH_SOLD_ROWS, dreRows } from '@/test/fixtures'
 import { mountWithProviders } from './mountWithProviders'
 
 describe('InfoTip', () => {
@@ -884,5 +886,27 @@ describe('CellBreakdown com unidade escolhida', () => {
     const headers = mount(CellBreakdown, { props: { breakdown } }).findAll('thead th').map((th) => th.text())
     expect(headers).not.toContain('Unidade')
     expect(headers).not.toContain('Banco')
+  })
+})
+
+describe('StockCard', () => {
+  const stock = readStock({ sheet: 'Estoque', rows: STOCK_WITH_SOLD_ROWS })!
+
+  it('mostra as cotas vendidas no mesmo formato, com a movimentação abaixo da barra', () => {
+    const card = mountWithProviders(StockCard, { props: { stock } })
+    const sold = card.get('[data-sold]')
+    expect(card.text()).toMatch(/Cotas vendidas\s*R\$\s?465\.000\s*em 5 cotas/)
+    const groups = sold.findAll(':scope > li').map((li) => li.text())
+    expect(groups[0]).toMatch(/^L31\s*Lancha\s*R\$\s?453\.000/)
+    expect(groups[0]).toContain('Grupo L20 fez upgrade para a L31 (cotas 01 e 04).')
+    expect(groups.find((text) => text.startsWith('L13'))).toContain(
+      'Troca de embarcação com a L20: não foi venda e fica fora do total vendido.',
+    )
+    expect(groups.find((text) => text.startsWith('L13'))).toContain('1 cota em troca')
+  })
+
+  it('sem lista de vendidas, não mostra o bloco', () => {
+    const card = mountWithProviders(StockCard, { props: { stock: { ...stock, sold: null } } })
+    expect(card.find('[data-sold]').exists()).toBe(false)
   })
 })

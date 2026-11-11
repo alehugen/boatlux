@@ -183,6 +183,18 @@ export const STOCK_ROWS: string[][] = [
   ['', '545000'],
 ]
 
+/** A aba de estoque com a lista de vendidas ao lado (coluna E), como na planilha da Boatlux. */
+export const STOCK_WITH_SOLD_ROWS: string[][] = [
+  ['Cotas disponíveis', 'Valor da cota', '10/2026', '', '', '', ''],
+  ['J12', 'R$ 12,000.00', '', '', 'VENDIDAS', '', ''],
+  ['L29 - 01', '145000', '', '', 'J12', 'R$ 12,000.00', ''],
+  ['L29 - 02', '145000', '', '', 'L13', 'R$ 69,000.00', 'Troca (L20)'],
+  ['L31- 05', '129000', '', '', 'L31 - 01', 'R$ 90,000.00', 'upgrade L20'],
+  ['L31 - 06', '114000', '', '', 'L31 - 02', 'R$ 114,000.00', ''],
+  ['', '545000', '', '', 'L31 - 04', 'R$ 119,000.00', 'upgrade L20'],
+  ['', '', '', '', 'L31 - 05', 'R$ 130,000.00', ''],
+]
+
 /** A planilha completa da Boatlux: DRE com fórmulas, fluxo de caixa, dívidas e estoque. */
 export function boatluxFile(): File {
   const dre = basisDre()
