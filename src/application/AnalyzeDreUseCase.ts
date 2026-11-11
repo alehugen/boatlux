@@ -106,10 +106,17 @@ export type ReachableProjection = Exclude<ProfitTargetProjection, { status: 'unr
 
 export type RevenueSliceKey = 'taxes' | 'costOfSales' | 'variableExpenses' | 'fixedExpenses'
 
+/** Uma linha da DRE dentro de uma fatia: `value` é quanto ela consome da receita (negativo quando soma, ex.: outra receita). */
+export interface RevenueSlicePart {
+  readonly label: string
+  readonly value: number
+}
+
 export interface RevenueSlice {
   readonly key: RevenueSliceKey
   readonly value: number
   readonly share: number
+  readonly parts: readonly RevenueSlicePart[]
 }
 
 /** Para onde vai a receita bruta até o EBITDA: o que cada etapa da DRE consome e o que sobra. */
@@ -171,6 +178,8 @@ const KPI_METRICS: DreMetric[] = [
 const WITHOUT_MARGIN: DreMetric[] = [DreMetric.GrossRevenue, DreMetric.EndingCash]
 
 const RECENT_WINDOW = 12
+/** Parte de uma fatia que a DRE calcula por fórmula, sem linha própria entre os resultados. */
+const OTHER_ADJUSTMENTS = 'Outros ajustes da DRE'
 
 const nextMonth = ({ year, month }: Period): Period => (month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 })
 
@@ -315,29 +324,76 @@ export class AnalyzeDreUseCase {
     }
   }
 
+  /**
+   * A receita bruta dividida pelas etapas da DRE até o EBITDA. Cada fatia é a diferença entre dois resultados
+   * da própria DRE (receita − impostos, − lucro bruto, − margem de contribuição, − EBITDA), então fatias
+   * e sobra fecham exatamente com a receita. As linhas de primeiro nível entre esses resultados viram as
+   * partes de cada fatia, para mostrar de onde vem o número.
+   */
+  /**
+   * A receita bruta dividida pelas etapas da DRE até o EBITDA. Cada fatia é a diferença entre dois resultados
+   * da própria DRE (receita − impostos, − lucro bruto, − margem de contribuição, − EBITDA), então fatias
+   * e sobra fecham exatamente com a receita. As linhas de primeiro nível entre esses resultados viram as
+   * partes de cada fatia, para mostrar de onde vem o número.
+   */
   private revenueFlow(report: DreReport, indexes: number[], revenue: number): RevenueFlow | null {
-    if (revenue <= 0 || !report.metric(DreMetric.Ebitda)) return null
+    const ebitdaLine = report.metric(DreMetric.Ebitda)
+    if (revenue <= 0 || !ebitdaLine) return null
     const value = (metric: DreMetric) => (report.metric(metric) ? report.valueOf(report.metric(metric), indexes) : null)
 
     const taxes = value(DreMetric.SalesTaxes)
-    const checkpoints: { key: RevenueSliceKey; remaining: number | null }[] = [
+    const checkpoints: { key: RevenueSliceKey; remaining: number | null; line?: DreLine }[] = [
       { key: 'taxes', remaining: taxes === null ? null : revenue + taxes },
-      { key: 'costOfSales', remaining: value(DreMetric.GrossProfit) },
-      { key: 'variableExpenses', remaining: value(DreMetric.ContributionMargin) },
-      { key: 'fixedExpenses', remaining: value(DreMetric.Ebitda) },
+      { key: 'costOfSales', remaining: value(DreMetric.GrossProfit), line: report.metric(DreMetric.GrossProfit) },
+      { key: 'variableExpenses', remaining: value(DreMetric.ContributionMargin), line: report.metric(DreMetric.ContributionMargin) },
+      { key: 'fixedExpenses', remaining: value(DreMetric.Ebitda), line: ebitdaLine },
     ]
 
-    const slices: RevenueSlice[] = []
+    // Etapa de cada linha: os impostos têm a sua; as demais vão para o próximo resultado que vem depois delas.
+    const position = new Map(report.lines.map((line, i) => [line, i]))
+    const revenueAt = position.get(report.metric(DreMetric.GrossRevenue)!) ?? -1
+    const ebitdaAt = position.get(ebitdaLine)!
+    const taxesLine = report.metric(DreMetric.SalesTaxes)
+    const stages = checkpoints.filter((c) => c.remaining !== null && c.line)
+    const partsOf = new Map<RevenueSliceKey, RevenueSlicePart[]>()
+    report.lines.forEach((line, at) => {
+      if (line.parentId !== null || at <= revenueAt || at >= ebitdaAt) return
+      if (line.kind === DreLineKind.Result || line.kind === DreLineKind.Balance) return
+      const key = line === taxesLine ? 'taxes' : stages.find((c) => position.get(c.line!)! > at)?.key
+      const consumed = -report.valueOf(line, indexes)
+      if (!key || consumed === 0) return
+      partsOf.set(key, [...(partsOf.get(key) ?? []), { label: line.label, value: consumed }])
+    })
+
+    let slices: { key: RevenueSliceKey; value: number; parts: RevenueSlicePart[] }[] = []
     let previous = revenue
     for (const { key, remaining } of checkpoints) {
       if (remaining === null) continue
       const consumed = previous - remaining
-      if (consumed > 0) slices.push({ key, value: consumed, share: consumed / revenue })
+      const parts = [...(partsOf.get(key) ?? [])]
+      const rest = consumed - sum(parts.map((part) => part.value))
+      if (Math.abs(rest) >= 0.005) parts.push({ label: OTHER_ADJUSTMENTS, value: rest })
+      slices.push({ key, value: consumed, parts })
       previous = remaining
     }
 
+    // Uma etapa que soma em vez de consumir (ex.: outras receitas maiores que as despesas) abate da etapa
+    // vizinha, para as fatias continuarem fechando com a receita.
+    for (let i = slices.findIndex((slice) => slice.value < 0); i >= 0; i = slices.findIndex((slice) => slice.value < 0)) {
+      const into = slices[i - 1] ?? slices[i + 1]
+      if (!into) break
+      into.value += slices[i]!.value
+      into.parts = [...into.parts, ...slices[i]!.parts]
+      slices = slices.filter((_, j) => j !== i)
+    }
+
     const result = value(DreMetric.Ebitda)!
-    return { revenue, slices, result, resultShare: result / revenue }
+    return {
+      revenue,
+      slices: slices.filter((slice) => slice.value > 0).map((slice) => ({ ...slice, share: slice.value / revenue })),
+      result,
+      resultShare: result / revenue,
+    }
   }
 
   private resolve(report: DreReport, selection: DreSelection): number[] {

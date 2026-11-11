@@ -433,7 +433,7 @@ describe('DreTable', () => {
     host.remove()
   })
 
-  it('destaca a coluna do período selecionado', () => {
+  it('marca a coluna do período selecionado, sem destaque visual, para rolar até ela', () => {
     expect(mountTable().get('[data-highlight]').text()).toBe('mar/26')
   })
 
@@ -639,10 +639,10 @@ describe('ThemeToggle', () => {
 
 describe('RevenueBar', () => {
   const slices = [
-    { key: 'taxes' as const, value: 90, share: 0.09 },
-    { key: 'costOfSales' as const, value: 310, share: 0.31 },
-    { key: 'variableExpenses' as const, value: 10, share: 0.01 },
-    { key: 'fixedExpenses' as const, value: 470, share: 0.47 },
+    { key: 'taxes' as const, value: 90, share: 0.09, parts: [{ label: 'IMPOSTOS SOBRE VENDA', value: 90 }] },
+    { key: 'costOfSales' as const, value: 310, share: 0.31, parts: [{ label: 'CUSTOS DAS MERCADORIAS VENDIDAS', value: 310 }] },
+    { key: 'variableExpenses' as const, value: 10, share: 0.01, parts: [{ label: 'OUTRAS DESPESAS VARIÁVEIS', value: 10 }] },
+    { key: 'fixedExpenses' as const, value: 470, share: 0.47, parts: [{ label: 'DESPESAS OPERACIONAIS', value: 470 }] },
   ]
 
   it('mostra quanto cada etapa consome de cada R$ 100 e quanto sobra', () => {
@@ -666,13 +666,44 @@ describe('RevenueBar', () => {
   })
 
   it('no prejuízo, diz quanto a operação gastou e marca o que passou da receita', () => {
-    const loss = [...slices.slice(0, 3), { key: 'fixedExpenses' as const, value: 670, share: 0.67 }]
+    const loss = [...slices.slice(0, 3), { key: 'fixedExpenses' as const, value: 670, share: 0.67, parts: [] }]
     const wrapper = mountWithProviders(RevenueBar, {
       props: { flow: { revenue: 1000, slices: loss, result: -80, resultShare: -0.08 } },
     })
     expect(wrapper.get('figcaption').text().replace(/\s/g, ' ')).toBe('De cada R$ 100 vendidos, a operação gastou R$ 108')
     expect(wrapper.text().replace(/\s/g, ' ')).toContain('R$ 8 faltam')
     expect(wrapper.get('[style*="left"]').text()).toBe('receita')
+  })
+
+  it('arredonda as partes para fecharem exatamente R$ 100', () => {
+    const thirds = [
+      { key: 'taxes' as const, value: 333, share: 0.333, parts: [] },
+      { key: 'costOfSales' as const, value: 333, share: 0.333, parts: [] },
+    ]
+    const wrapper = mountWithProviders(RevenueBar, {
+      props: { flow: { revenue: 1000, slices: thirds, result: 334, resultShare: 0.334 } },
+    })
+    const values = wrapper.findAll('li .figure').map((el) => Number(el.text().replace(/\D/g, '')))
+    expect(values.reduce((a, b) => a + b, 0)).toBe(100)
+  })
+
+  it('cada parte da barra mostra a conta e as linhas da DRE que a compõem', async () => {
+    const host = document.body.appendChild(document.createElement('div'))
+    const wrapper = mountWithProviders(RevenueBar, {
+      props: { flow: { revenue: 1000, slices, result: 120, resultShare: 0.12 } },
+      attachTo: host,
+    })
+    const part = wrapper.get('[aria-label^="custos das vendas"]')
+    expect(part.attributes('aria-label')).toMatch(/^custos das vendas: R\$\s31 de cada R\$ 100\. Ver de onde vem o valor$/)
+    await part.trigger('focus')
+    await vi.waitFor(() => expect(document.body.querySelector('[data-slot="tooltip-content"]')).not.toBeNull())
+    const tip = document.body.querySelector('[data-slot="tooltip-content"]')!.textContent!.replace(/\s+/g, ' ')
+    expect(tip).toContain('Lucro operacional bruto')
+    expect(tip).toContain('Custos das mercadorias vendidas')
+    expect(tip).toMatch(/-R\$ 310/)
+    expect(tip).toMatch(/receita bruta de R\$ 1\.000/)
+    wrapper.vm.$.appContext.app.unmount()
+    host.remove()
   })
 })
 

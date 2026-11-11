@@ -288,9 +288,9 @@ describe('para onde vai a receita', () => {
     expect(february.revenueFlow).toEqual({
       revenue: 1200,
       slices: [
-        { key: 'taxes', value: 120, share: 0.1 },
-        { key: 'costOfSales', value: 350, share: 350 / 1200 },
-        { key: 'fixedExpenses', value: 520, share: 520 / 1200 },
+        { key: 'taxes', value: 120, share: 0.1, parts: [{ label: 'IMPOSTOS SOBRE VENDA', value: 120 }] },
+        { key: 'costOfSales', value: 350, share: 350 / 1200, parts: [{ label: 'CUSTOS DAS MERCADORIAS VENDIDAS', value: 350 }] },
+        { key: 'fixedExpenses', value: 520, share: 520 / 1200, parts: [{ label: 'DESPESAS OPERACIONAIS', value: 520 }] },
       ],
       result: 210,
       resultShare: 210 / 1200,
@@ -306,6 +306,21 @@ describe('para onde vai a receita', () => {
     ])
     expect(flow.result).toBe(-70)
     expect(flow.slices.reduce((total, s) => total + s.value, 0)).toBe(flow.revenue - flow.result)
+  })
+
+  it('cada fatia lista as linhas da DRE que a compõem, e uma outra receita abate da fatia', () => {
+    const lines = DRE_LINES.flatMap((line) =>
+      line?.[0] === 'DESPESAS OPERACIONAIS'
+        ? [['OUTRAS RECEITAS OPERACIONAIS', 0, 50, 50, 50] as const, ['Rendimentos', 0, 50, 50, 50] as const, null, line]
+        : [line],
+    )
+    const withOther = DreReport.fromTable({ sheet: 'DRE Unidades', rows: dreRows({ lines }) })!
+    const flow = useCase.execute(withOther, { type: 'month', index: 1 }).revenueFlow!
+    const fixed = flow.slices.find((s) => s.key === 'fixedExpenses')!
+    // O EBITDA da planilha (fórmula fixa no fixture) não muda: a diferença entra como ajuste da DRE.
+    expect(fixed.parts.map((p) => p.label)).toEqual(['OUTRAS RECEITAS OPERACIONAIS', 'DESPESAS OPERACIONAIS', 'Outros ajustes da DRE'])
+    expect(fixed.parts.reduce((total, p) => total + p.value, 0)).toBeCloseTo(fixed.value)
+    expect(flow.slices.reduce((total, s) => total + s.value, 0) + flow.result).toBeCloseTo(flow.revenue)
   })
 
   it('não monta a divisão sem a linha do EBITDA', () => {

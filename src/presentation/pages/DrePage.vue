@@ -118,7 +118,7 @@ const heroHead = useTemplateRef('heroHead')
 const docked = useScrolledPast(() => heroHead.value)
 
 const INFO = {
-  flow: 'A receita bruta do período dividida pelas etapas da DRE até o EBITDA: impostos sobre venda, custos das mercadorias e serviços vendidos, despesas variáveis e despesas fixas (já descontadas as outras receitas operacionais). O que sobra é o EBITDA. Valores por R$ 100 de receita, arredondados.',
+  flow: 'A receita bruta do período dividida pelas etapas da DRE até o EBITDA: impostos sobre venda, custos das mercadorias e serviços vendidos, despesas variáveis e despesas fixas (já descontadas as outras receitas operacionais). O que sobra é o EBITDA. Valores por R$ 100 de receita, arredondados para somar exatamente 100. Passe o mouse numa parte da barra para ver a conta e as linhas da DRE que a compõem.',
   expenses:
     'Grupos de custos e despesas anteriores ao EBITDA no período selecionado, do maior para o menor. O tooltip mostra quanto cada um consome da receita bruta.',
   mix: 'Contas que formam a receita bruta, empilhadas mês a mês. Só aparecem as contas com movimento.',

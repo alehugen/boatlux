@@ -15,13 +15,14 @@ import MonthFilter from './MonthFilter.vue'
 import SegmentedControl from './SegmentedControl.vue'
 
 /** `basis`: regime e unidade, no subtítulo. O slot `filters` aparece só em tela cheia, para trocar de unidade sem sair dela. */
+/** `highlight`: meses do período selecionado, só para rolar a tabela até eles (sem destaque visual). */
 const props = defineProps<{ report: DreReport; highlight: number[]; basis?: string }>()
 defineSlots<{ filters?: () => unknown }>()
 const subtitle = computed(() => [props.report.name, props.basis].filter(Boolean).join(' · '))
 const { open, breakdown, canInspect, inspect } = useCellBreakdown(() => props.report)
 
 const TABLE_INFO =
-  'Valores como na planilha: receitas positivas, custos e despesas negativos. Os totais de cada grupo e os resultados aparecem em destaque. AV % = cada linha ÷ receita bruta do mesmo mês. Clique em um grupo para ver as contas que o compõem; a coluna destacada é o período selecionado. Em Meses, escolha quais meses aparecem, para focar em um período ao apresentar. Quando a planilha traz a aba de fluxo de caixa, clique em um valor para ver os lançamentos que o compõem.'
+  'Valores como na planilha: receitas positivas, custos e despesas negativos. Os totais de cada grupo e os resultados aparecem em destaque. AV % = cada linha ÷ receita bruta do mesmo mês. Clique em um grupo para ver as contas que o compõem. Em Meses, escolha quais meses aparecem, para focar em um período ao apresentar. Quando a planilha traz a aba de fluxo de caixa, clique em um valor para ver os lançamentos que o compõem.'
 
 const MODES = [
   { value: 'value', label: 'Valores (R$)' },
@@ -87,8 +88,6 @@ const rowClass = (line: DreLine) => {
   if (tone) return [tone.bg, tone.text, 'uppercase tracking-[0.02em]']
   return ['hover:bg-muted/60', line.parentId ? 'text-body' : 'text-foreground']
 }
-const cellBackground = (line: DreLine, index: number) =>
-  props.highlight.includes(index) ? (band(line) ? 'bg-white/15' : 'bg-water-soft/70') : undefined
 
 const cell = (line: DreLine, index: number) => format(line, index, mode.value)
 const CELL_TEXT = 'inline-grid justify-items-end after:invisible after:content-[attr(data-alt)] after:[grid-area:1/1]'
@@ -156,7 +155,7 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
               data-period
               :data-highlight="highlight.includes(i) ? '' : undefined"
               class="px-3 py-2.5 text-right font-normal figure whitespace-nowrap"
-              :class="[compact && 'min-w-36 px-5', highlight.includes(i) && 'bg-water-soft text-foreground']"
+              :class="[compact && 'min-w-36 px-5']"
             >
               {{ formatPeriod(report.periods[i]!) }}
             </th>
@@ -197,7 +196,7 @@ watch(() => props.highlight, scrollToHighlight, { flush: 'post' })
               v-for="i in shown"
               :key="i"
               class="px-3 text-right figure whitespace-nowrap"
-              :class="[band(line) ? 'py-2' : 'py-1.5', compact && 'px-5', cellBackground(line, i)]"
+              :class="[band(line) ? 'py-2' : 'py-1.5', compact && 'px-5']"
             >
               <button
                 v-if="(line.values[i] ?? 0) !== 0 && canInspect(line)"
